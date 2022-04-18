@@ -2,7 +2,6 @@ import pytube
 import csv
 
 
-
 def get_vid_paths(path):
     vid_infos = []
     with open(path, newline='') as csvfile:
