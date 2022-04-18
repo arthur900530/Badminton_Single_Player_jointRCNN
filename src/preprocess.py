@@ -36,7 +36,7 @@ def video_preprocess(vid_path):
     sceneModel = scene_utils.build_model(model_path, device)
 
     # set up the paths
-    # vid_path = '../input/full_game_1080p/CTC_A_jump.mp4'
+    # vid_path = '../inputs/full_game_1080p/CTC_A_jump.mp4'
     paths = [f"../outputs/videos/{vid_path.split('/')[-1].split('.')[0]}",
              f"../outputs/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}",
              f"../outputs/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}",
