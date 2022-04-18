@@ -3,8 +3,8 @@ from scene_utils import scene_classifier
 import torch
 from PIL import Image
 
-path1 = '../input/big.jpg'
-path2 = '../input/calculate2.jpg'
+path1 = '../inputs/big.jpg'
+path2 = '../inputs/calculate2.jpg'
 model_path = 'scene_classifier.pt'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = scene_utils.build_model(model_path, device)
