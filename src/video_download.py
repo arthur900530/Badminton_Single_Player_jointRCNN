@@ -2,6 +2,7 @@ import pytube
 import csv
 
 
+
 def get_vid_paths(path):
     vid_infos = []
     with open(path, newline='') as csvfile:
@@ -22,16 +23,36 @@ def download_vid(vid_infos):
                 continue
     for info in vid_infos:
         name = info[0]
-        url = info[1]
+        url1 = info[1]
+        url2 = info[2]
+        one_count = 0
+        two_count = 0
         if name not in downloaded:
-            yt = pytube.YouTube(url)
-            print(yt.streams.filter(res='1080p'))
-            print('Downloading...')
-            yt.streams.filter(res='1080p').first().download("../inputs/full_game_1080p")
-            print('Finish download !')
-            with open('downloaded.csv', 'a', newline='') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow([name, url])
+            try:
+                yt = pytube.YouTube(url1)
+                print(yt.streams.filter(res='1080p'))
+                print('Downloading...')
+                yt.streams.filter(res='1080p').first().download("../inputs/full_game_1080p")
+                print('Finish download !')
+                with open('downloaded.csv', 'a', newline='') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerow([name, url1])
+                one_count += 1
+            except Exception as e:
+                print(e)
+                try:
+                    yt = pytube.YouTube(url2)
+                    print(yt.streams.filter(res='1080p'))
+                    print('Downloading...')
+                    yt.streams.filter(res='1080p').first().download("../inputs/full_game_1080p")
+                    print('Finish download !')
+                    with open('downloaded.csv', 'a', newline='') as csvfile:
+                        writer = csv.writer(csvfile)
+                        writer.writerow([name, url2])
+                    two_count += 1
+                except Exception as e:
+                    print(e)
+                    continue
         else:
             continue
     return True
