@@ -37,7 +37,12 @@ def video_preprocess(vid_path):
 
     # set up the paths
     # vid_path = '../inputs/full_game_1080p/CTC_A_jump.mp4'
-    paths = [f"../outputs/videos/{vid_path.split('/')[-1].split('.')[0]}",
+    paths = [f"../outputs/videos",
+             f"../outputs/scene_data",
+             f"../outputs/scene_data/F_data",
+             f"../outputs/scene_data/T_data",
+             f"../outputs/joint_data",
+             f"../outputs/videos/{vid_path.split('/')[-1].split('.')[0]}",
              f"../outputs/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}",
              f"../outputs/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}",
              f"../outputs/joint_data/{vid_path.split('/')[-1].split('.')[0]}"]
