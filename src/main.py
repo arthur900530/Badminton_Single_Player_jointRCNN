@@ -13,21 +13,23 @@ def get_path(base):
     return paths
 
 
-vid_infos = vd.get_vid_paths('video.csv')
-finish_download = vd.download_vid(vid_infos)
+# vid_infos = vd.get_vid_paths('video.csv')
+# finish_download = vd.download_vid(vid_infos)
+finish_download = True
 
 if finish_download:
     print('Start resolving...')
     vid_paths = get_path('../inputs/full_game_1080p')
     total = len(vid_paths)
     current = 1
-    failed = 0
+    proccessed = 0
     for vid_path in vid_paths:
-        print(f'Progress: {current}/{total}\nFailed: {failed}', '\n', vid_path)
+        print(f'Progress: {current}/{total}\nFailed: {proccessed}', '\n', 'Current path: ', vid_path)
         success, vid_info = preprocess.video_preprocess(vid_path)
         if success:
             current += 1
         else:
-            failed += 1
-        print(success, vid_info)
+            proccessed += 1
+        print('Processed: ', success, '\n', 'Video info: ', vid_info)
     print('Finish resolving!')
+    print('='*30)
