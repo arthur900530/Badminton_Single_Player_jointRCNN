@@ -12,6 +12,17 @@ def check_dir(path):
         os.mkdir(path)
 
 
+def get_path(base):
+    paths = []
+    vid_names = []
+    with os.scandir(base) as entries:
+        for entry in entries:
+            paths.append(base + '/' + entry.name)
+            vid_names.append(entry.name)
+            pass
+    return paths, vid_names
+
+
 def check_type(last_type, wait_list):
     if last_type == 0:
         for pair in wait_list:
@@ -27,6 +38,7 @@ def check_type(last_type, wait_list):
                 return False
     return True
 
+
 # first 1 image will be sent to get court keypoint
 def video_preprocess(vid_path):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -35,7 +47,13 @@ def video_preprocess(vid_path):
     # scene model
     model_path = 'scene_classifier.pt'
     sceneModel = scene_utils.build_model(model_path, device)
-
+    default_paths = [f"../outputs/videos",
+                     f"../outputs/scene_data",
+                     f"../outputs/scene_data/F_data",
+                     f"../outputs/scene_data/T_data",
+                     f"../outputs/joint_data",]
+    for path in default_paths:
+        check_dir(path)
     processed = []
     with open('processed.csv', newline='') as csvfile:
         rows = csv.reader(csvfile)
@@ -46,15 +64,12 @@ def video_preprocess(vid_path):
                 continue
     vid_name = vid_path.split('/')[-1].split('.')[0]
 
+    # _, processed = get_path('../outputs/joint_data')
+    # print(processed)
     if vid_name not in processed:
         # set up the paths
         # vid_path = '../inputs/full_game_1080p/CTC_A_jump.mp4'
-        paths = [f"../outputs/videos",
-                 f"../outputs/scene_data",
-                 f"../outputs/scene_data/F_data",
-                 f"../outputs/scene_data/T_data",
-                 f"../outputs/joint_data",
-                 f"../outputs/videos/{vid_name}",
+        paths = [f"../outputs/videos/{vid_name}",
                  f"../outputs/scene_data/F_data/{vid_name}",
                  f"../outputs/scene_data/T_data/{vid_name}",
                  f"../outputs/joint_data/{vid_name}"]
