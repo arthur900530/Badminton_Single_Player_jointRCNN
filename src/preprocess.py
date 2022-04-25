@@ -14,13 +14,11 @@ def check_dir(path):
 
 def get_path(base):
     paths = []
-    vid_names = []
     with os.scandir(base) as entries:
         for entry in entries:
             paths.append(base + '/' + entry.name)
-            vid_names.append(entry.name)
             pass
-    return paths, vid_names
+    return paths
 
 
 def check_type(last_type, wait_list):
@@ -49,8 +47,8 @@ def video_preprocess(vid_path):
     sceneModel = scene_utils.build_model(model_path, device)
     default_paths = [f"../outputs/videos",
                      f"../outputs/scene_data",
-                     f"../outputs/scene_data/F_data",
-                     f"../outputs/scene_data/T_data",
+                     f"E:/scene_data/F_data",
+                     f"E:/scene_data/T_data",
                      f"../outputs/joint_data",]
     for path in default_paths:
         check_dir(path)
@@ -70,8 +68,8 @@ def video_preprocess(vid_path):
         # set up the paths
         # vid_path = '../inputs/full_game_1080p/CTC_A_jump.mp4'
         paths = [f"../outputs/videos/{vid_name}",
-                 f"../outputs/scene_data/F_data/{vid_name}",
-                 f"../outputs/scene_data/T_data/{vid_name}",
+                 f"E:/scene_data/F_data/{vid_name}",
+                 f"E:/scene_data/T_data/{vid_name}",
                  f"../outputs/joint_data/{vid_name}"]
         for path in paths:
             check_dir(path)
@@ -117,34 +115,34 @@ def video_preprocess(vid_path):
                                 if check_type(last_type, wait_list):
                                     last_type = 1
                                     score_count += 1
-                                    score_path = f"../outputs/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}/score_{score_count}"
+                                    score_path = f"E:/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}/score_{score_count}"
                                     check_dir(score_path)
                                     save_path = score_path + f"/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
                                     tup[1].save(save_path)
                                     save_count += 1
                                 else:
-                                    save_path = f"../outputs/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
+                                    save_path = f"E:/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
                                     tup[1].save(save_path)
                                     save_count += 1
                             else:
                                 if check_type(last_type, wait_list):
                                     last_type = 0
-                                    save_path = f"../outputs/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
+                                    save_path = f"E:/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
                                     tup[1].save(save_path)
                                     save_count += 1
                                 else:
-                                    score_path = f"../outputs/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}/score_{score_count}"
+                                    score_path = f"E:/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}/score_{score_count}"
                                     save_path = score_path + f"/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
                                     tup[1].save(save_path)
                                     save_count += 1
                         else:
                             if last_type == 1:
-                                score_path = f"../outputs/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}/score_{score_count}"
+                                score_path = f"E:/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}/score_{score_count}"
                                 save_path = score_path + f"/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
                                 tup[1].save(save_path)
                                 save_count += 1
                             else:
-                                save_path = f"../outputs/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
+                                save_path = f"E:/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
                                 tup[1].save(save_path)
                                 save_count += 1
                 else:
@@ -157,11 +155,11 @@ def video_preprocess(vid_path):
         # clear wait list
         for i in range(len(wait_list)):
             if last_type == 0:
-                save_path = f"../outputs/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
+                save_path = f"E:/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
                 wait_list[i][1].save(save_path)
                 save_count += 1
             else:
-                score_path = f"../outputs/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}/score_{score_count}"
+                score_path = f"E:/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}/score_{score_count}"
                 save_path = score_path + f"/{vid_path.split('/')[-1].split('.')[0]}{'_' + str(save_count)}.jpg"
                 wait_list[i][1].save(save_path)
                 save_count += 1
