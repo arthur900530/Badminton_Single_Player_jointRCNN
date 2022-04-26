@@ -12,8 +12,7 @@ transform = transforms.Compose([
 ])
 
 # initialize the model
-model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True,
-                                                               num_keypoints=17)
+model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True, num_keypoints=17)
 # set the computation device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # load the modle on to the computation device and set to eval mode
@@ -22,13 +21,15 @@ model.to(device).eval()
 image_path = '../inputs/check2.jpg'
 image = Image.open(image_path).convert('RGB')
 width, height = image.size
+
 # NumPy copy of the image for OpenCV functions
 orig_numpy = np.array(image, dtype=np.float32)
 # convert the NumPy image to OpenCV BGR format
 orig_numpy = cv2.cvtColor(orig_numpy, cv2.COLOR_RGB2BGR) / 255.
+
 # transform the image
 # image = image[180:height, int(width / 2 - 490):int(width / 2 + 490)]
-image = image.crop((int(width / 2 - 675),180,int(width / 2 + 675),height))
+image = image.crop((int(width / 2 - 675), 180, int(width / 2 + 675), height))
 image = transform(image)
 # add a batch dimension
 image = image.unsqueeze(0).to(device)
@@ -46,7 +47,7 @@ if(playerJoints != True):
                       'frame':0,
                       'joint':playerJoints,
                       'label':-1
-                    })
+    })
 
 # visualize the image
 cv2.imshow('Keypoint image', output_image)

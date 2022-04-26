@@ -9,21 +9,22 @@ from torchvision.transforms import transforms
 import scene_utils
 from scene_utils import scene_classifier
 
+
 def check_dir(path):
     isExit = os.path.exists(path)
     if not isExit:
         os.mkdir(path)
 
 court_box_A = [239, 433, 1673, 1007]
-court_mp_A = [[590, 434, 1], [1310, 434, 1], [476, 624, 1],[1427, 623, 1],[256, 1000, 1],[1660, 1002, 1]]
+court_p_A = [[590, 434, 1], [1310, 434, 1], [476, 624, 1],[1427, 623, 1],[256, 1000, 1],[1660, 1002, 1]]
 
 # transform to convert the image to tensor
 transform = transforms.Compose([
     transforms.ToTensor()
 ])
+
 # initialize the model
-model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True,
-                                                               num_keypoints=17)
+model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True, num_keypoints=17)
 # set the computation device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # load the modle on to the computation device and set to eval mode
@@ -37,6 +38,7 @@ paths = [f"../outputs/videos/{vid_path.split('/')[-1].split('.')[0]}",
          f"../outputs/scene_data/F_data/{vid_path.split('/')[-1].split('.')[0]}",
          f"../outputs/scene_data/T_data/{vid_path.split('/')[-1].split('.')[0]}",
          f"../outputs/joint_data/{vid_path.split('/')[-1].split('.')[0]}"]
+
 for path in paths:
     check_dir(path)
 
@@ -78,7 +80,7 @@ while cap.isOpened():
                 image = image.unsqueeze(0).to(device)
                 with torch.no_grad():
                     outputs = model(image)
-                output_image, playerJoints = c_utils.draw_keypoints(outputs, frame, save_count, court_box_A, court_mp_A)
+                output_image, playerJoints = c_utils.draw_keypoints(outputs, frame, save_count, court_box_A, court_p_A)
                 if playerJoints != True:
                     for points in playerJoints:
                         for i, joints in enumerate(points):

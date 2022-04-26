@@ -1,6 +1,7 @@
 import preprocess
 from scene_utils import scene_classifier
 import video_download as vd
+import frame_process as fp
 
 
 # vid_infos = vd.get_vid_paths('video.csv')
@@ -24,14 +25,15 @@ import video_download as vd
 #         print('Processed: ', proccessed, '\n', 'Video info: ', vid_info)
 #     print('Finish resolving!')
 #     print('='*30)
+court_p_A = [[590, 434, 1], [1310, 434, 1], [476, 624, 1],[1427, 623, 1],[256, 1000, 1],[1660, 1002, 1]]
 
-vid_paths = preprocess.get_path('E:/test/T_data')
-print(vid_paths)
+vid_paths = preprocess.get_path('../test/T_data')
+
 for vid_path in vid_paths:
     scores = preprocess.get_path(vid_path)
-    print(scores)
     for score in scores:
-        frames = preprocess.get_path(score)
-        print(len(frames))
+        success = fp.score_process(score, court_p_A)
+
+print('Success: ', success)
 
 
