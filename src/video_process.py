@@ -73,7 +73,6 @@ class video_processor:
             ret, frame = self.cap.read()
             if ret:
                 if self.frame_count % self.frame_rate == 0:
-                    print(self.save_count, ' / ', self.total_save_count)
                     sceneImg = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
                     sceneImg = scene_utils.preprocess(sceneImg, self.device)
                     p = scene_utils.predict(self.scene_model, sceneImg)
@@ -95,7 +94,12 @@ class video_processor:
                                     p = 1
                             else:
                                 self.checkpoint = True
-                                if p == 1:
+                                if p == 0:
+                                    framesDict = {'frames': self.joint_list}
+                                    save_path = f"../outputs/joint_data/{self.vid_name}/{self.vid_name}-score_{self.score}.json"
+                                    with open(save_path, 'w') as f:
+                                        json.dump(framesDict, f, indent=2)
+                                    self.joint_list = []
                                     self.score += 1
                                 self.last_type = p
                         else:
@@ -127,10 +131,20 @@ class video_processor:
                             text = f"Frame count: {self.save_count}, Court: False, Checkpoint: {self.checkpoint}, Score: {self.score}"
                             cv2.putText(frame, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
                             self.out.write(frame)
+                        print(self.save_count, ' / ', self.total_save_count)
                 else:
                     self.frame_count += 1
             else:
                 break
+        # clear wait list
+        for i in range(len(self.wait_list)):
+            frame = self.wait_list[i][2]
+            self.frame_count += 1
+            self.save_count += 1
+            text = f"Frame count: {self.save_count}, Court: False, Checkpoint: {self.checkpoint}, Score: {self.score}"
+            cv2.putText(frame, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+            self.out.write(frame)
+            print(self.save_count, ' / ', self.total_save_count)
 
         # release VideoCapture()
         self.cap.release()
@@ -139,11 +153,6 @@ class video_processor:
         # calculate and print the average FPS
         print(f'Frame count:{self.frame_count}')
         print(f'Save count:{self.save_count}')
-
-        framesDict = {'frames': self.joint_list}
-        save_path = f"../outputs/joint_data/{self.vid_name}/{self.vid_name}.json"
-        with open(save_path, 'w') as f:
-            json.dump(framesDict, f, indent=2)
 
         return True
 
