@@ -25,15 +25,22 @@ import frame_process as fp
 #         print('Processed: ', proccessed, '\n', 'Video info: ', vid_info)
 #     print('Finish resolving!')
 #     print('='*30)
-court_p_A = [[590, 434, 1], [1310, 434, 1], [476, 624, 1],[1427, 623, 1],[256, 1000, 1],[1660, 1002, 1]]
 
-vid_paths = preprocess.get_path('../test/T_data')
+# court_p_A = [[590, 434, 1], [1310, 434, 1], [476, 624, 1],[1427, 623, 1],[256, 1000, 1],[1660, 1002, 1]]
+#
+# vid_paths = preprocess.get_path('../test/T_data')
+#
+# for vid_path in vid_paths:
+#     scores = preprocess.get_path(vid_path)
+#     for score in scores:
+#         success = fp.score_process(score, court_p_A)
+#
+# print('Success: ', success)
 
-for vid_path in vid_paths:
-    scores = preprocess.get_path(vid_path)
-    for score in scores:
-        success = fp.score_process(score, court_p_A)
+import video_process as vp
 
-print('Success: ', success)
+vpr = vp.video_processor('../inputs/full_game_1080p/CTC_A_jump.mp4')
+vpr.process()
+
 
 
