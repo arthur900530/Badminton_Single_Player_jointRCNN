@@ -39,7 +39,7 @@ import frame_process as fp
 
 import video_process as vp
 
-vpr = vp.video_processor('../inputs/full_game_1080p/CTC_A_jump.mp4')
+vpr = vp.video_processor('../inputs/full_game_1080p/test.mp4', '..')
 vpr.process()
 
 
