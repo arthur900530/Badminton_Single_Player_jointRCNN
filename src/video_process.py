@@ -17,8 +17,8 @@ class video_processor:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True, num_keypoints=17)
         self.model.to(self.device).eval()
-        self.scene_model = scene_utils.build_model('scene_classifier.pt', self.device)
-        self.court_kp_model = torch.load('court_kpRCNN.pth')
+        self.scene_model = scene_utils.build_model('model_weights/scene_classifier.pt', self.device)
+        self.court_kp_model = torch.load('model_weights/court_kpRCNN.pth')
         self.court_kp_model.to(self.device).eval()
         self.paths = [f"{self.base}/outputs",
                       f"{self.base}/outputs/videos",

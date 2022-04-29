@@ -43,7 +43,7 @@ def video_preprocess(vid_path):
     info_dict = {}
     wait_list = []
     # scene model
-    model_path = 'scene_classifier.pt'
+    model_path = 'model_weights/scene_classifier.pt'
     sceneModel = scene_utils.build_model(model_path, device)
     default_paths = [f"../outputs/videos",
                      f"../outputs/scene_data",

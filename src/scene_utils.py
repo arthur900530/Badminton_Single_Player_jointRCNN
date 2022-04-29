@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 
-filePath = 'scene_classifier.pt'
+filePath = 'model_weights/scene_classifier.pt'
 
 class scene_classifier(nn.Module):
     def __init__(self):
