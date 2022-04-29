@@ -164,14 +164,13 @@ class video_processor:
                             cv2.putText(frame, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
                             self.out.write(frame)
                         self.save_count += 1
-                        print(self.save_count, ' / ', self.total_save_count, self.frame_count-1)
+                        print(self.save_count, ' / ', self.total_save_count)
                         self.frame_count += 1
                 else:
                     self.frame_count += 1
             else:
                 break
         # clear wait list
-        print(len(self.wait_list), '=' * 50)
         for i in range(len(self.wait_list)):
             frame = self.wait_list[i][2]
             if self.frame_count % self.frame_rate == 0:
