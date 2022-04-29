@@ -1,3 +1,5 @@
+import csv
+
 import cv2, json, numpy as np, matplotlib, matplotlib.pyplot as plt
 from preprocess import get_path, check_dir
 from PIL import Image
@@ -5,11 +7,13 @@ import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils
+import time
 from scene_utils import scene_classifier
 
 
 class video_processor:
     def __init__(self, vid_path, output_base='..'):
+        self.start_time = time.time()
         self.base = output_base
         self.vid_path = vid_path
         self.vid_name = vid_path.split('/')[-1].split('.')[0]
@@ -35,12 +39,12 @@ class video_processor:
         self.save_path = f"{self.base}/outputs/videos/{self.vid_name}/{self.vid_name}.mp4"
         self.out = cv2.VideoWriter(self.save_path, cv2.VideoWriter_fourcc(*'mp4v'), 10, (self.frame_width, self.frame_height))
         self.frame_count = 1
-        self.save_count = 0
+        self.saved_count = 0
         self.time_rate = 0.1
         self.FPS = self.cap.get(5)
         self.frame_rate = int(int(self.FPS) * self.time_rate)
         self.total_frame_count = int(self.cap.get(7))
-        self.total_save_count = int(self.total_frame_count / self.frame_rate)
+        self.total_saved_count = int(self.total_frame_count / self.frame_rate)
         self.court_points = None
         self.court_info = None
         self.joint_list = []
@@ -50,9 +54,7 @@ class video_processor:
         self.score = 0
         self.one_count = 0
 
-    # [[590, 434, 1], [1310, 434, 1],
-    #  [476, 624, 1], [1427, 623, 1],
-    #  [256, 1000, 1], [1660, 1002, 1]]
+
 
     def get_court_info(self, img):
         with torch.no_grad():
@@ -151,20 +153,20 @@ class video_processor:
                                     for i, joints in enumerate(points):
                                         points[i] = joints[0:2]
                                 self.joint_list.append({
-                                    'frame': self.save_count,
+                                    'frame': self.saved_count,
                                     'joint': player_joints,
                                     'label': -1,
                                     'type': 'TYPE'
                                 })
-                            text = f"Frame count: {self.save_count}, Court: True, Checkpoint: {self.checkpoint}, Score: {self.score}"
+                            text = f"Frame count: {self.saved_count}, Court: True, Checkpoint: {self.checkpoint}, Score: {self.score}"
                             cv2.putText(output_image, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
                             self.out.write(output_image)
                         else:
-                            text = f"Frame count: {self.save_count}, Court: False, Checkpoint: {self.checkpoint}, Score: {self.score}"
+                            text = f"Frame count: {self.saved_count}, Court: False, Checkpoint: {self.checkpoint}, Score: {self.score}"
                             cv2.putText(frame, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
                             self.out.write(frame)
-                        self.save_count += 1
-                        print(self.save_count, ' / ', self.total_save_count)
+                        self.saved_count += 1
+                        print(self.saved_count, ' / ', self.total_saved_count)
                         self.frame_count += 1
                 else:
                     self.frame_count += 1
@@ -174,20 +176,33 @@ class video_processor:
         for i in range(len(self.wait_list)):
             frame = self.wait_list[i][2]
             if self.frame_count % self.frame_rate == 0:
-                self.save_count += 1
-                text = f"Frame count: {self.save_count}, Court: False, Checkpoint: {self.checkpoint}, Score: {self.score}"
+                self.saved_count += 1
+                text = f"Frame count: {self.saved_count}, Court: False, Checkpoint: {self.checkpoint}, Score: {self.score}"
                 cv2.putText(frame, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
                 self.out.write(frame)
-                print(self.save_count, ' / ', self.total_save_count, self.frame_count)
+                print(self.saved_count, ' / ', self.total_saved_count)
                 self.frame_count += 1
             else:
                 self.frame_count += 1
 
         self.cap.release()
         cv2.destroyAllWindows()
+        print(f"Second cost: {round(time.time() - self.start_time, 1)}")
         print(f'Frame count:{self.frame_count}')
-        print(f'Save count:{self.save_count}')
+        print(f'Save count:{self.saved_count}')
+        print(f'Score: {self.score}')
 
+        with open('csv_records/video_data.csv', 'a', newline='') as csvfile:
+            fieldnames = ['vid_name', 'total_frame_count', 'total_saved_count', 'saved_count', 'score', 'execution_time(sec)']
+            writer = csv.DictWriter(csvfile, fieldnames, delimiter=',', quotechar='"')
+            writer.writerow({
+                'vid_name': self.vid_name,
+                'total_frame_count': self.total_frame_count,
+                'total_saved_count': self.total_saved_count,
+                'saved_count': self.saved_count,
+                'score': self.score,
+                'execution_time(sec)': round(time.time() - self.start_time, 1)
+            })
         return True
 
     def check_pos(self, indexes, boxes):

@@ -1,13 +1,15 @@
+import csv
 import preprocess
 from scene_utils import scene_classifier
 import video_download as vd
 import frame_process as fp
-
+import video_process as vp
 
 # vid_infos = vd.get_vid_paths('video.csv')
 # finish_download = vd.download_vid(vid_infos)
-# finish_download = True
-#
+finish_download = True
+
+# 存成圖片版
 # if finish_download:
 #     print('Start resolving...')
 #     vid_paths = preprocess.get_path('../inputs/full_game_1080p')
@@ -37,10 +39,30 @@ import frame_process as fp
 #
 # print('Success: ', success)
 
-import video_process as vp
+if finish_download:
+    print(f"Start resolving...\n{'='*30}")
+    vid_paths = preprocess.get_path('../inputs/full_game_1080p') # the dir where the videos are
+    total_vids = len(vid_paths)
+    processed = []
+    with open('csv_records/processed.csv') as csvfile:
+        rows = csv.reader(csvfile)
+        for row in rows:
+            if len(row) != 0:
+                processed.append(row[0])
+            else:
+                continue
 
-vpr = vp.video_processor('../inputs/full_game_1080p/test.mp4', '..')
-vpr.process()
-
+    for i, path in enumerate(vid_paths):
+        print(f'Progress: {i+1} / {total_vids}')
+        vid_name = path.split('/')[-1].split('.')[0]
+        if vid_name not in processed:
+            vpr = vp.video_processor(path, output_base='..')    # output base is where "outputs" dir is
+            vpr.process()
+            with open('csv_records/processed.csv', 'a', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow([vid_name])
+        else:
+            print(f"{vid_name} already processed!\n{'='*30}")
+    print('Finish resolving!')
 
 

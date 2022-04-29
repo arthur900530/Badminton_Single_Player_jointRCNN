@@ -53,7 +53,7 @@ def video_preprocess(vid_path):
     for path in default_paths:
         check_dir(path)
     processed = []
-    with open('processed.csv', newline='') as csvfile:
+    with open('processed.csv') as csvfile:
         rows = csv.reader(csvfile)
         for row in rows:
             if len(row) != 0:
