@@ -133,7 +133,7 @@ class video_processor:
                                 if p == 0:
                                     if len(self.joint_list) / self.one_count > 0.6 and self.one_count > 25:
                                         framesDict = {'frames': self.joint_list}
-                                        save_path = f"{self.base}/outputs/joint_data/{self.vid_name}/{self.vid_name}-score_{self.score}.json"
+                                        save_path = f"{self.base}/outputs/joint_data/{self.vid_name}/score_{self.score}.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(framesDict, f, indent=2)
                                         self.joint_list = []
@@ -241,8 +241,8 @@ class video_processor:
         mp_y = self.court_info[4]
         ankle_x = (joint[15][0] + joint[16][0]) / 2
         ankle_y = (joint[15][1] + joint[16][1]) / 2
-        top = ankle_y > self.court_points[0][1] - 80
-        bottom = ankle_y < self.court_points[5][1] + 20
+        top = ankle_y > self.court_points[0][1]
+        bottom = ankle_y < self.court_points[5][1]
         lmp_x = (ankle_y - l_b) / l_a
         rmp_x = (ankle_y - r_b) / r_a
         left = ankle_x > lmp_x
