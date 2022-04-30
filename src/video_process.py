@@ -37,7 +37,8 @@ class video_processor:
         self.frame_width = int(self.cap.get(3))
         self.frame_height = int(self.cap.get(4))
         self.save_path = f"{self.base}/outputs/videos/{self.vid_name}/{self.vid_name}.mp4"
-        self.out = cv2.VideoWriter(self.save_path, cv2.VideoWriter_fourcc(*'mp4v'), 10, (self.frame_width, self.frame_height))
+        self.out = cv2.VideoWriter(self.save_path, cv2.VideoWriter_fourcc(*'mp4v'), 10,
+                                   (self.frame_width, self.frame_height))
         self.frame_count = 1
         self.saved_count = 0
         self.time_rate = 0.1
@@ -54,8 +55,6 @@ class video_processor:
         self.score = 0
         self.one_count = 0
 
-
-
     def get_court_info(self, img):
         with torch.no_grad():
             img = F.to_tensor(img)
@@ -64,10 +63,21 @@ class video_processor:
             output = self.court_kp_model(img)
         scores = output[0]['scores'].detach().cpu().numpy()
         high_scores_idxs = np.where(scores > 0.7)[0].tolist()
-        post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs], output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy()
+        post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs], output[0]['scores'][high_scores_idxs],
+                                            0.3).cpu().numpy()
         keypoints = []
         for kps in output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             keypoints.append([list(map(int, kp[:2])) for kp in kps])
+        keypoints[0][0][0] -= 80
+        keypoints[0][0][1] -= 80
+        keypoints[0][1][0] += 80
+        keypoints[0][1][1] -= 80
+        keypoints[0][2][0] -= 80
+        keypoints[0][3][0] += 80
+        keypoints[0][4][0] -= 80
+        keypoints[0][4][1] = min(keypoints[0][4][1] + 80, self.frame_height - 40)
+        keypoints[0][5][0] += 80
+        keypoints[0][5][1] = min(keypoints[0][5][1] + 80, self.frame_height - 40)
         self.court_points = keypoints[0]
         l_a = (self.court_points[0][1] - self.court_points[4][1]) / (self.court_points[0][0] - self.court_points[4][0])
         l_b = self.court_points[0][1] - l_a * self.court_points[0][0]
@@ -93,7 +103,6 @@ class video_processor:
                 return True
             else:
                 return False
-
 
     def process(self):
         while self.cap.isOpened():
@@ -135,7 +144,7 @@ class video_processor:
                                         self.one_count = 0
                                 else:
                                     if self.court_points == None:
-                                        _ = self.get_court_info(img=frame)
+                                        _ = self.get_court_info(img=self.wait_list[2][2])
                                         print("Get!")
                                     self.one_count += 1
                                 self.last_type = p
@@ -158,12 +167,18 @@ class video_processor:
                                     'label': -1,
                                     'type': 'TYPE'
                                 })
+                            # add features
+                            for kps in [self.court_points]:
+                                for idx, kp in enumerate(kps):
+                                    cv2.circle(output_image, tuple(kp), 5, (255, 255, 0), 10)
                             text = f"Frame count: {self.saved_count}, Court: True, Checkpoint: {self.checkpoint}, Score: {self.score}"
-                            cv2.putText(output_image, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+                            cv2.putText(output_image, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1,
+                                        cv2.LINE_AA)
                             self.out.write(output_image)
                         else:
                             text = f"Frame count: {self.saved_count}, Court: False, Checkpoint: {self.checkpoint}, Score: {self.score}"
-                            cv2.putText(frame, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+                            cv2.putText(frame, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1,
+                                        cv2.LINE_AA)
                             self.out.write(frame)
                         self.saved_count += 1
                         print(self.saved_count, ' / ', self.total_saved_count)
@@ -193,7 +208,8 @@ class video_processor:
         print(f'Score: {self.score}')
 
         with open('csv_records/video_data.csv', 'a', newline='') as csvfile:
-            fieldnames = ['vid_name', 'total_frame_count', 'total_saved_count', 'saved_count', 'score', 'execution_time(sec)']
+            fieldnames = ['vid_name', 'total_frame_count', 'total_saved_count', 'saved_count', 'score',
+                          'execution_time(sec)']
             writer = csv.DictWriter(csvfile, fieldnames, delimiter=',', quotechar='"')
             writer.writerow({
                 'vid_name': self.vid_name,
