@@ -37,15 +37,15 @@ class video_processor:
         self.frame_width = int(self.cap.get(3))
         self.frame_height = int(self.cap.get(4))
         self.save_path = f"{self.base}/outputs/videos/{self.vid_name}/{self.vid_name}.mp4"
-        self.out = cv2.VideoWriter(self.save_path, cv2.VideoWriter_fourcc(*'mp4v'), 10,
-                                   (self.frame_width, self.frame_height))
         self.frame_count = 1
         self.saved_count = 0
         self.time_rate = 0.1
         self.FPS = self.cap.get(5)
-        self.frame_rate = int(int(self.FPS) * self.time_rate)
+        self.frame_rate = round(int(self.FPS) * self.time_rate)
         self.total_frame_count = int(self.cap.get(7))
         self.total_saved_count = int(self.total_frame_count / self.frame_rate)
+        self.out = cv2.VideoWriter(self.save_path, cv2.VideoWriter_fourcc(*'mp4v'), int(self.FPS/self.frame_rate),
+                                   (self.frame_width, self.frame_height))
         self.court_points = None
         self.court_info = None
         self.joint_list = []
