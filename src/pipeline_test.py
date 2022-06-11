@@ -4,6 +4,7 @@ import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils
+import shot_recog
 from scene_utils import scene_classifier
 
 
@@ -244,6 +245,9 @@ class video_resolver:
                                         self.joint_list = []
                                         self.score += 1
                                         self.one_count = 0
+                                        input, frame_num, s_joint_list = shot_recog.get_data(save_path)
+                                        # input 給 model 輸出 d
+                                        # d =
                                     else:
                                         self.joint_list = []
                                         self.one_count = 0
