@@ -4,7 +4,7 @@ import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils
-import shot_recog
+# import shot_recog
 from scene_utils import scene_classifier
 
 
@@ -62,6 +62,7 @@ class video_resolver:
         # self.out = cv2.VideoWriter(self.save_path, cv2.VideoWriter_fourcc(*'mp4v'), int(self.FPS/self.frame_rate),
         #                            (self.frame_width, self.frame_height))
         self.court_points = None
+        self.true_court_points = None
         self.court_info = None
         self.joint_list = []
         self.wait_list = []
@@ -84,6 +85,8 @@ class video_resolver:
         keypoints = []
         for kps in output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             keypoints.append([list(map(int, kp[:2])) for kp in kps])
+        self.true_court_points = keypoints[0]
+        print(self.true_court_points, len(self.true_court_points))
         keypoints[0][0][0] -= 80
         keypoints[0][0][1] -= 80
         keypoints[0][1][0] += 80
@@ -231,21 +234,21 @@ class video_resolver:
                                         framesDict = {'frames': self.joint_list}
                                         sc_path = f"{self.base}/outputs/{self.vid_name}/score_{self.score}"
                                         check_dir(sc_path)
-
-                                        out = cv2.VideoWriter(f"{self.base}/outputs/{self.vid_name}/score_{self.score}/score_{self.score}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
+                                        b = f"{self.base}/outputs/{self.vid_name}/score_{self.score}/"
+                                        out = cv2.VideoWriter(f"{b}score_{self.score}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
                                                               int(self.FPS / self.frame_rate), (self.frame_width, self.frame_height))
                                         for img in joint_img_list:
                                             out.write(img)
                                         joint_img_list = []
                                         out.release()
 
-                                        save_path = f"{self.base}/outputs/{self.vid_name}/score_{self.score}/score_{self.score}.json"
+                                        save_path = f"{b}score_{self.score}.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(framesDict, f, indent=2)
                                         self.joint_list = []
                                         self.score += 1
                                         self.one_count = 0
-                                        input, frame_num, s_joint_list = shot_recog.get_data(save_path)
+                                        # input, score_joint_list = shot_recog.get_data(save_path)
                                         # input 給 model 輸出 d
                                         # d =
                                     else:
@@ -271,16 +274,15 @@ class video_resolver:
                                     for i, joints in enumerate(points):
                                         points[i] = joints[0:2]
                                 self.joint_list.append({
-                                    'frame': self.saved_count,
                                     'joint': player_joints,
                                 })
                             # add features
                             for kps in [self.court_points]:
                                 for idx, kp in enumerate(kps):
                                     cv2.circle(output_image, tuple(kp), 5, (255, 255, 0), 10)
-                            text = f"Frame count: {self.saved_count}, Court: True, Checkpoint: {self.checkpoint}, Score: {self.score}"
-                            cv2.putText(output_image, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1,
-                                        cv2.LINE_AA)
+                            # text = f"Frame count: {self.saved_count}, Court: True, Checkpoint: {self.checkpoint}, Score: {self.score}"
+                            # cv2.putText(output_image, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1,
+                            #             cv2.LINE_AA)
                             joint_img_list.append(output_image)
 
                         self.saved_count += 1
