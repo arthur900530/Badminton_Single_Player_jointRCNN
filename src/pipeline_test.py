@@ -1,10 +1,11 @@
+import copy
 import os, csv, cv2, json, time, numpy as np, matplotlib, matplotlib.pyplot as plt
 from PIL import Image
 import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils
-# import shot_recog
+import shot_recog
 from scene_utils import scene_classifier
 
 
@@ -85,8 +86,8 @@ class video_resolver:
         keypoints = []
         for kps in output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             keypoints.append([list(map(int, kp[:2])) for kp in kps])
-        self.true_court_points = keypoints[0]
-        print(self.true_court_points, len(self.true_court_points))
+        self.true_court_points = copy.deepcopy(keypoints[0])
+        print(self.true_court_points)
         keypoints[0][0][0] -= 80
         keypoints[0][0][1] -= 80
         keypoints[0][1][0] += 80
@@ -98,6 +99,7 @@ class video_resolver:
         keypoints[0][5][0] += 80
         keypoints[0][5][1] = min(keypoints[0][5][1] + 80, self.frame_height - 40)
         self.court_points = keypoints[0]
+        print(self.court_points)
         l_a = (self.court_points[0][1] - self.court_points[4][1]) / (
                     self.court_points[0][0] - self.court_points[4][0])
         l_b = self.court_points[0][1] - l_a * self.court_points[0][0]
@@ -203,6 +205,7 @@ class video_resolver:
 
     def resolve(self):
         joint_img_list = []
+        temp_code = 0
         while self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
@@ -248,7 +251,12 @@ class video_resolver:
                                         self.joint_list = []
                                         self.score += 1
                                         self.one_count = 0
-                                        # input, score_joint_list = shot_recog.get_data(save_path)
+                                        input, score_joint_list = shot_recog.get_data(save_path)
+                                        shot_list = shot_recog.check_hit_frame(temp_code, score_joint_list, self.true_court_points)
+                                        print(shot_list)
+                                        success = shot_recog.add_result(b, f"{b}score_{self.score-1}.mp4", shot_list, self.true_court_points)
+                                        if success:
+                                            print(f'Finish score_{self.score}')
                                         # input 給 model 輸出 d
                                         # d =
                                     else:

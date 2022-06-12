@@ -1,5 +1,15 @@
 import numpy as np
 import json
+import cv2
+from PIL import Image, ImageDraw, ImageFont
+
+score_0_d_list = [2,2,2,2,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,2,
+                  2,2,2,2,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,1,1,1,1,2,2,2,
+                  2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+score_1_d_list = [1,1,1,1,1,1,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,
+                  2,2,2,2,2,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+                  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,]
 
 
 def top_bottom(joint):
@@ -11,7 +21,51 @@ def top_bottom(joint):
         bottom = 1
     return top, bottom
 
+# [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
+def add_result(base, vid_path, shot_list, court_points):
+    bounds = get_area_bound(court_points)
+    cap = cv2.VideoCapture(vid_path)
+    if not cap.isOpened():
+        print('Error while trying to read video. Please check path again')
+    frame_width = int(cap.get(3))
+    frame_height = int(cap.get(4))
+    FPS = cap.get(5)
+    save_path = f"{base}{vid_path.split('/')[-1].split('.')[0]}_added.mp4"
+    out = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), FPS,(frame_width, frame_height))
+    count = 0
+    i = 0
+    imax = len(shot_list)
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if ret:
+            for b in bounds:
+                cv2.circle(frame, tuple((int(frame_width/2 - 2), int(b[0]))), 5, (255, 255, 0), 10)
+                cv2.circle(frame, tuple((int(frame_width / 2 - 2), int(b[1]))), 5, (255, 255, 0), 10)
+            bound = shot_list[i][2]
+            if bound > count:
+                text = shot_list[i][0]
+                cv2_im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                pil_im = Image.fromarray(cv2_im)
+                draw = ImageDraw.Draw(pil_im)
+                font = ImageFont.truetype("../font/msjh.ttc", 50, encoding="utf-8")
+                draw.text((900, 50), text, (255, 255, 255), font=font)
+                cv2_text_im = cv2.cvtColor(np.array(pil_im), cv2.COLOR_RGB2BGR)
+                # cv2.putText(frame, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1,
+                            # cv2.LINE_AA)
+                out.write(cv2_text_im)
+            count += 1
+            if count > bound and i < imax-1:
+                i += 1
+        else:
+            break
+    return True
+
 def check_hit_frame(direction_list, joint_list, court_points):
+    if direction_list == 0:
+        direction_list = score_0_d_list
+    elif direction_list == 1:
+        direction_list = score_1_d_list
+    first_coord = None
     shot_list = []
     got_first = False
     last_d = 0
@@ -24,29 +78,45 @@ def check_hit_frame(direction_list, joint_list, court_points):
                 first_i = i
                 got_first = True
                 last_d = 1
-                continue
             elif d == 2:
                 top, bot = top_bottom(joint_list[i])
                 first_coord = (joint_list[i][bot][16][1] + joint_list[i][bot][15][1]) / 2
                 first_i = i
                 got_first = True
                 last_d = 2
-                continue
+            continue
         if d != last_d and last_d == 1:
+            if d == 0:
+                d = 2
+                change = True
+            else:
+                change = False
+            top, bot = top_bottom(joint_list[i])
             second_coord = (joint_list[i][bot][16][1] + joint_list[i][bot][15][1]) / 2
             second_i = i
             shot = shot_recog(first_coord, second_coord, d, court_points)
             shot_list.append((shot, first_i, second_i))
+            first_i = second_i
             last_d = d
+            if change:
+                last_d = 0
             first_coord = second_coord
         if d != last_d and last_d == 2:
+            if d == 0:
+                d = 1
+                change = True
+            else:
+                change = False
+            top, bot = top_bottom(joint_list[i])
             second_coord = (joint_list[i][top][16][1] + joint_list[i][top][15][1]) / 2
             second_i = i
             shot = shot_recog(first_coord, second_coord, d, court_points)
             shot_list.append((shot, first_i, second_i))
+            first_i = second_i
             last_d = d
+            if change:
+                last_d = 0
             first_coord = second_coord
-
     return shot_list
 
 
@@ -55,15 +125,15 @@ def get_area_bound(court_points):
     top = round((court_points[0][1] + court_points[1][1]) / 2)
     mid = round((court_points[2][1] + court_points[3][1]) / 2)
     bot = round((court_points[4][1] + court_points[5][1]) / 2)
-    top_sliced_area = (mid - top)/5
-    bot_sliced_area = (bot - mid)/5
-    top_back = (top, top + top_sliced_area)
-    top_mid = (top + top_sliced_area, top + 3*top_sliced_area)
-    top_front = (top + 3*top_sliced_area, mid)
+    top_sliced_area = (mid - top)/10
+    bot_sliced_area = (bot - mid)/10
+    top_back = (top, top + 3*top_sliced_area)
+    top_mid = (top + 3*top_sliced_area, top + 7*top_sliced_area)
+    top_front = (top + 7*top_sliced_area, mid)
 
-    bot_back = (bot-bot_sliced_area, bot)
-    bot_mid = (bot - 3*bot_sliced_area, bot-bot_sliced_area)
-    bot_front = (mid, bot - 3*bot_sliced_area)
+    bot_back = (bot - 3*bot_sliced_area, bot)
+    bot_mid = (bot - 7*bot_sliced_area, bot - 3*bot_sliced_area)
+    bot_front = (mid, bot - 7*bot_sliced_area)
 
     bounds = [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
     return bounds
@@ -74,10 +144,10 @@ def check_pos(coord, bounds, pos):
             return 'back'
         if coord > bounds[1][0] and coord < bounds[1][1]:
             return 'mid'
-        if coord > bounds[2][0] and coord < bounds[2][1]:
+        if coord > bounds[2][0]:
             return 'front'
     if pos == 'bot':
-        if coord > bounds[3][0] and coord < bounds[3][1]:
+        if coord < bounds[3][1]:
             return 'front'
         if coord > bounds[4][0] and coord < bounds[4][1]:
             return 'mid'
@@ -96,6 +166,7 @@ def shot_recog(first_coord, second_coord, d, court_points):
         pos_top = check_pos(first_coord, bounds, 'top')
         pos_bot = check_pos(second_coord, bounds, 'bot')
         serve = 'top'
+    print(pos_top, pos_bot, serve)
     shot = check_shot(pos_top, pos_bot, serve)
     return shot
 
@@ -103,42 +174,42 @@ def shot_recog(first_coord, second_coord, d, court_points):
 def check_shot(pos_top, pos_bot, serve):
     if serve == 'top':
         if pos_top == 'front' and pos_bot == 'front':
-            return '上至下小球'
+            return '↓ 小球'
         if pos_top == 'front' and pos_bot == 'mid':
-            return '上至下平球'
+            return '↓ 平球'
         if pos_top == 'front' and pos_bot == 'back':
-            return '上至下挑球'
+            return '↓ 挑球'
         if pos_top == 'mid' and pos_bot == 'front':
-            return '上至下小球'
+            return '↓ 小球'
         if pos_top == 'mid' and pos_bot == 'mid':
-            return '上至下平球'
+            return '↓ 平球'
         if pos_top == 'mid' and pos_bot == 'back':
-            return '上至下挑球'
+            return '↓ 挑球'
         if pos_top == 'back' and pos_bot == 'front':
-            return '上至下切球'
+            return '↓ 切球'
         if pos_top == 'back' and pos_bot == 'mid':
-            return '上至下殺球'
+            return '↓ 殺球'
         if pos_top == 'back' and pos_bot == 'back':
-            return '上至下長球'
+            return '↓ 長球'
     if serve == 'bot':
         if pos_top == 'front' and pos_bot == 'front':
-            return '下至上小球'
+            return '↑ 小球'
         if pos_top == 'front' and pos_bot == 'mid':
-            return '下至上小球'
+            return '↑ 小球'
         if pos_top == 'front' and pos_bot == 'back':
-            return '下至上切球'
+            return '↑ 切球'
         if pos_top == 'mid' and pos_bot == 'front':
-            return '下至上平球'
+            return '↑ 平球'
         if pos_top == 'mid' and pos_bot == 'mid':
-            return '下至上平球'
+            return '↑ 平球'
         if pos_top == 'mid' and pos_bot == 'back':
-            return '下至上殺球'
+            return '↑ 殺球'
         if pos_top == 'back' and pos_bot == 'front':
-            return '下至上挑球'
+            return '↑ 挑球'
         if pos_top == 'back' and pos_bot == 'mid':
-            return '下至上挑球'
+            return '↑ 挑球'
         if pos_top == 'back' and pos_bot == 'back':
-            return '下至上長球'
+            return '↑ 長球'
 
 
 def get_data(path):
@@ -171,13 +242,13 @@ def get_data(path):
     joint_list = np.array(joint_list)
     return input, joint_list
 
-input, frame_num, s_joint_list = get_data('E:/test_videos/outputs/p_test/score_15/score_15.json')
-print(len(input), len(frame_num), len(s_joint_list))
-print(s_joint_list[10].shape)
-with open('E:/test_videos/outputs/p_test/score_15/score_15.json', 'r') as mp_json:
-    frame_dict = json.load(mp_json)
-
-labels = []
-for i in range(len(frame_dict['frames'])):
-    labels.append(frame_dict['frames'][i]['label'])
-print(labels, len(labels))
+# input, s_joint_list = get_data('E:/test_videos/outputs/p_test/score_15/score_15.json')
+# print(len(input), len(frame_num), len(s_joint_list))
+# print(s_joint_list[10].shape)
+# with open('E:/test_videos/outputs/p_test/score_15/score_15.json', 'r') as mp_json:
+#     frame_dict = json.load(mp_json)
+#
+# labels = []
+# for i in range(len(frame_dict['frames'])):
+#     labels.append(frame_dict['frames'][i]['label'])
+# print(labels, len(labels))
