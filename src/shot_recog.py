@@ -127,13 +127,13 @@ def get_area_bound(court_points):
     bot = round((court_points[4][1] + court_points[5][1]) / 2)
     top_sliced_area = (mid - top)/10
     bot_sliced_area = (bot - mid)/10
-    top_back = (top, top + 3*top_sliced_area)
-    top_mid = (top + 3*top_sliced_area, top + 7*top_sliced_area)
-    top_front = (top + 7*top_sliced_area, mid)
+    top_back = (top, top + 4*top_sliced_area)
+    top_mid = (top + 4*top_sliced_area, top + 6*top_sliced_area)
+    top_front = (top + 6*top_sliced_area, mid)
 
-    bot_back = (bot - 3*bot_sliced_area, bot)
-    bot_mid = (bot - 7*bot_sliced_area, bot - 3*bot_sliced_area)
-    bot_front = (mid, bot - 7*bot_sliced_area)
+    bot_back = (bot - 4*bot_sliced_area, bot)
+    bot_mid = (bot - 6*bot_sliced_area, bot - 4*bot_sliced_area)
+    bot_front = (mid, bot - 6*bot_sliced_area)
 
     bounds = [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
     return bounds
