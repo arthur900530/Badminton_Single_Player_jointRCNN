@@ -252,8 +252,9 @@ class video_resolver:
                                         self.score += 1
                                         self.one_count = 0
                                         input, score_joint_list = shot_recog.get_data(save_path)
-                                        shot_list = shot_recog.check_hit_frame(temp_code, score_joint_list, self.true_court_points)
-                                        print(shot_list)
+
+                                        shot_list, pos_percentage = shot_recog.check_hit_frame(temp_code, score_joint_list, self.true_court_points)
+                                        print(shot_list, pos_percentage)
                                         success = shot_recog.add_result(b, f"{b}score_{self.score-1}.mp4", shot_list, self.true_court_points)
                                         if success:
                                             print(f'Finish score_{self.score}')
