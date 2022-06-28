@@ -67,6 +67,7 @@ def get_pos_percentage(joint_list, bounds):
     bot_front = 0
     bot_mid = 0
     bot_back = 0
+
     for i in range(len(joint_list)):
         top, bot = top_bottom(joint_list[i])
         t_coord = (joint_list[i][top][16][1] + joint_list[i][top][15][1]) / 2
