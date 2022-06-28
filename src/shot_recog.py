@@ -20,10 +20,71 @@ def top_bottom(joint):
         top = 0
         bottom = 1
     return top, bottom
+# [[[100  50]]
+#
+#  [[200 300]]
+#
+#  [[700 200]]
+#
+#  [[500 100]]]
+
+def get_area(court_points, bounds):
+    l_a = (court_points[0][1] - court_points[4][1]) / (
+            court_points[0][0] - court_points[4][0])
+    l_b = court_points[0][1] - l_a * court_points[0][0]
+    r_a = (court_points[1][1] - court_points[5][1]) / (
+            court_points[1][0] - court_points[5][0])
+    r_b = court_points[1][1] - r_a * court_points[1][0]
+    all = []
+
+    tb0x = (min(court_points[0][1], court_points[1][1]) - l_b) / l_a
+    tbox = (min(court_points[0][1], court_points[1][1]) - r_b) / r_a
+    tb1x = (bounds[0][1] - l_b) / l_a
+    tb2x = (bounds[0][1] - r_b) / r_a
+    top_back_area = np.array([[tb0x, min(court_points[0][1], court_points[1][1])], [tbox, min(court_points[0][1], court_points[1][1])], [tb2x, bounds[0][1]], [tb1x, bounds[0][1]]], np.int32)
+    top_b = top_back_area.reshape((-1, 1, 2))
+
+    tm1x = (bounds[1][1] - l_b) / l_a
+    tm2x = (bounds[1][1] - r_b) / r_a
+    top_mid_area = np.array([[tb1x, bounds[0][1]], [tb2x, bounds[0][1]], [tm2x, bounds[1][1]], [tm1x, bounds[1][1]]], np.int32)
+    top_m = top_mid_area.reshape((-1, 1, 2))
+
+    tf1x = (bounds[2][1] - l_b) / l_a
+    tf2x = (bounds[2][1] - r_b) / r_a
+    top_front_area = np.array(
+        [[tm1x, bounds[1][1]], [tm2x, bounds[1][1]], [tf2x, bounds[2][1]], [tf1x, bounds[2][1]]], np.int32)
+    top_f = top_front_area.reshape((-1, 1, 2))
+
+    bf1x = (bounds[3][1] - l_b) / l_a
+    bf2x = (bounds[3][1] - r_b) / r_a
+    bot_front_area = np.array(
+        [[tf1x, bounds[2][1]+2], [tf2x, bounds[2][1]+2], [bf2x, bounds[3][1]], [bf1x, bounds[3][1]]], np.int32)
+    bot_f = bot_front_area.reshape((-1, 1, 2))
+
+    bm1x = (bounds[4][1] - l_b) / l_a
+    bm2x = (bounds[4][1] - r_b) / r_a
+    bot_mid_area = np.array(
+        [[bf1x, bounds[3][1]], [bf2x, bounds[3][1]], [bm2x, bounds[4][1]], [bm1x, bounds[4][1]]], np.int32)
+    bot_m = bot_mid_area.reshape((-1, 1, 2))
+
+    bb1x = (bounds[5][1] - l_b) / l_a
+    bb2x = (bounds[5][1] - r_b) / r_a
+    bot_back_area = np.array(
+        [[bm1x, bounds[4][1]], [bm2x, bounds[4][1]], [bb2x, bounds[5][1]], [bb1x, bounds[5][1]]], np.int32)
+    bot_b = bot_back_area.reshape((-1, 1, 2))
+    # (39, 171, 242)
+    all.append((top_b, (255, 255, 0)))
+    all.append((top_m, (255, 255, 0)))
+    all.append((top_f, (255, 255, 0)))
+    all.append((bot_f, (0, 255, 255)))
+    all.append((bot_m, (0, 255, 255)))
+    all.append((bot_b, (0, 255, 255)))
+    return all
 
 # [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
 def add_result(base, vid_path, shot_list, court_points):
     bounds = get_area_bound(court_points)
+    areas = get_area(court_points, bounds)
     cap = cv2.VideoCapture(vid_path)
     if not cap.isOpened():
         print('Error while trying to read video. Please check path again')
@@ -38,6 +99,8 @@ def add_result(base, vid_path, shot_list, court_points):
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
+            for a in areas:
+                cv2.polylines(frame, pts=[a[0]], isClosed=True, color=a[1], thickness=1)
             for b in bounds:
                 cv2.circle(frame, tuple((int(frame_width/2 - 2), int(b[0]))), 5, (255, 255, 0), 10)
                 cv2.circle(frame, tuple((int(frame_width / 2 - 2), int(b[1]))), 5, (255, 255, 0), 10)
@@ -67,7 +130,6 @@ def get_pos_percentage(joint_list, bounds):
     bot_front = 0
     bot_mid = 0
     bot_back = 0
-
     for i in range(len(joint_list)):
         top, bot = top_bottom(joint_list[i])
         t_coord = (joint_list[i][top][16][1] + joint_list[i][top][15][1]) / 2
