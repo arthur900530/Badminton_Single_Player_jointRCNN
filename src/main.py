@@ -1,5 +1,5 @@
 import csv
-import preprocess
+from utility import check_dir, get_path
 from scene_utils import scene_classifier
 import video_download as vd
 import frame_process as fp
@@ -41,7 +41,7 @@ finish_download = True
 
 if finish_download:
     print(f"Start resolving...\n{'='*30}")
-    vid_paths = preprocess.get_path('../inputs/full_game_1080p') # the dir where the videos are
+    vid_paths = get_path('../inputs/full_game_1080p') # the dir where the videos are
     total_vids = len(vid_paths)
     processed = []
     with open('csv_records/processed.csv') as csvfile:

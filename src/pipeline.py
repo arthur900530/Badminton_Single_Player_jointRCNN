@@ -1,5 +1,5 @@
 import copy
-import os, csv, cv2, json, time, numpy as np, matplotlib, matplotlib.pyplot as plt
+import csv, cv2, json, time, numpy as np, matplotlib
 from PIL import Image
 import torch, torchvision
 from torchvision.transforms import transforms
@@ -7,21 +7,7 @@ from torchvision.transforms import functional as F
 import scene_utils
 import shot_recog
 from scene_utils import scene_classifier
-
-
-def check_dir(path):
-    isExit = os.path.exists(path)
-    if not isExit:
-        os.mkdir(path)
-
-
-def get_path(base):
-    paths = []
-    with os.scandir(base) as entries:
-        for entry in entries:
-            paths.append(base + '/' + entry.name)
-            pass
-    return paths
+from utility import check_dir, get_path
 
 
 class video_resolver:
@@ -42,10 +28,14 @@ class video_resolver:
 
         self.paths = [f"{self.base}/outputs",
                       f"{self.base}/outputs/{self.vid_name}"]
+
         for path in self.paths:
             check_dir(path)
 
         self.cap = cv2.VideoCapture(vid_path)
+        self.start_recording = True
+        self.start_frame = 0
+        self.end_frame = 0
 
         if not self.cap.isOpened():
             print('Error while trying to read video. Please check path again')
@@ -60,8 +50,7 @@ class video_resolver:
         self.frame_rate = round(int(self.FPS) * self.time_rate)
         self.total_frame_count = int(self.cap.get(7))
         self.total_saved_count = int(self.total_frame_count / self.frame_rate)
-        # self.out = cv2.VideoWriter(self.save_path, cv2.VideoWriter_fourcc(*'mp4v'), int(self.FPS/self.frame_rate),
-        #                            (self.frame_width, self.frame_height))
+
         self.court_points = None
         self.true_court_points = None
         self.court_info = None
@@ -132,7 +121,6 @@ class video_resolver:
         l_b = self.court_info[1]
         r_a = self.court_info[2]
         r_b = self.court_info[3]
-        mp_y = self.court_info[4]
         ankle_x = (joint[15][0] + joint[16][0]) / 2
         ankle_y = (joint[15][1] + joint[16][1]) / 2
         top = ankle_y > self.court_points[0][1]
@@ -178,7 +166,9 @@ class video_resolver:
         topScores = self.score_rank(j)
         if topScores == False:
             return image, True
+
         fit, combination = self.check_pos(topScores, b)
+
         if fit:
             for c in combination:
                 i = topScores[c]
@@ -234,18 +224,23 @@ class video_resolver:
                                 self.checkpoint = True
                                 if p == 0:
                                     if len(self.joint_list) / self.one_count > 0.6 and self.one_count > 25:
+                                        if not self.start_recording:
+                                            self.start_recording = True
+                                            self.end_frame = self.frame_count
                                         framesDict = {'frames': self.joint_list}
-                                        sc_path = f"{self.base}/outputs/{self.vid_name}/score_{self.score}"
-                                        check_dir(sc_path)
-                                        b = f"{self.base}/outputs/{self.vid_name}/score_{self.score}/"
-                                        out = cv2.VideoWriter(f"{b}score_{self.score}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
+                                        video_store_path = f"{self.base}/outputs/{self.vid_name}/video"
+                                        json_store_path = f"{self.base}/outputs/{self.vid_name}/json"
+                                        check_dir(video_store_path)
+                                        check_dir(json_store_path)
+
+                                        out = cv2.VideoWriter(f"{video_store_path}/score_{self.score}_{self.start_frame}_{self.end_frame}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
                                                               int(self.FPS / self.frame_rate), (self.frame_width, self.frame_height))
                                         for img in joint_img_list:
                                             out.write(img)
                                         joint_img_list = []
                                         out.release()
 
-                                        save_path = f"{b}score_{self.score}.json"
+                                        save_path = f"{json_store_path}/score_{self.score}_{self.start_frame}_{self.end_frame}.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(framesDict, f, indent=2)
                                         self.joint_list = []
@@ -255,7 +250,7 @@ class video_resolver:
 
                                         shot_list, pos_percentage = shot_recog.check_hit_frame(temp_code, score_joint_list, self.true_court_points)
                                         print(shot_list, pos_percentage)
-                                        success = shot_recog.add_result(b, f"{b}score_{self.score-1}.mp4", shot_list, self.true_court_points)
+                                        success = shot_recog.add_result(f'{video_store_path}/', f"{video_store_path}/score_{self.score-1}_{self.start_frame}_{self.end_frame}.mp4", shot_list, self.true_court_points)
                                         if success:
                                             print(f'Finish score_{self.score}')
                                         # input 給 model 輸出 d
@@ -272,12 +267,16 @@ class video_resolver:
                         else:
                             self.checkpoint = False
                         if p == 1:
+                            if self.start_recording:
+                                self.start_frame = self.frame_count
+                                self.start_recording = False
                             self.one_count += 1
                             image = self.transform(pil_image)
                             image = image.unsqueeze(0).to(self.device)
                             with torch.no_grad():
                                 outputs = self.model(image)
                             output_image, player_joints = self.draw_keypoints(outputs, frame)
+
                             if player_joints != True:
                                 for points in player_joints:
                                     for i, joints in enumerate(points):
@@ -285,6 +284,7 @@ class video_resolver:
                                 self.joint_list.append({
                                     'joint': player_joints,
                                 })
+
                             # add features
                             for kps in [self.court_points]:
                                 for idx, kp in enumerate(kps):

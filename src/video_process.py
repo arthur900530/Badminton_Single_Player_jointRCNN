@@ -1,6 +1,6 @@
 import csv
 import cv2, json, numpy as np, matplotlib, matplotlib.pyplot as plt
-from preprocess import get_path, check_dir
+from utility import check_dir, get_path
 from PIL import Image
 import torch, torchvision
 from torchvision.transforms import transforms
@@ -9,6 +9,13 @@ import scene_utils
 import time
 from scene_utils import scene_classifier
 
+def get_path(base):
+    paths = []
+    with os.scandir(base) as entries:
+        for entry in entries:
+            paths.append(base + '/' + entry.name)
+            pass
+    return paths
 
 class video_processor:
     def __init__(self, vid_path, output_base='..'):
