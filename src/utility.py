@@ -12,6 +12,7 @@ def get_path(base):
         for entry in entries:
             paths.append(base + '/' + entry.name)
             pass
+
     return paths
 
 
