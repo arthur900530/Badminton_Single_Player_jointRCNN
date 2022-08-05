@@ -12,7 +12,6 @@ def get_path(base):
         for entry in entries:
             paths.append(base + '/' + entry.name)
             pass
-
     return paths
 
 
@@ -32,4 +31,4 @@ def parse_time(FPS, frame_count):
     if shr < 10:
         shr = '0' + str(shr)
 
-    return f'{shr}:{smin}:{ssec}'
+    return f'{shr}-{smin}-{ssec}'

@@ -7,7 +7,7 @@ from torchvision.transforms import functional as F
 import scene_utils
 import shot_recog
 from scene_utils import scene_classifier
-from utility import check_dir, get_path
+from utility import check_dir, get_path, parse_time
 
 
 class video_resolver:
@@ -232,15 +232,16 @@ class video_resolver:
                                         json_store_path = f"{self.base}/outputs/{self.vid_name}/json"
                                         check_dir(video_store_path)
                                         check_dir(json_store_path)
-
-                                        out = cv2.VideoWriter(f"{video_store_path}/score_{self.score}_{self.start_frame}_{self.end_frame}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
+                                        start_time = parse_time(self.FPS, self.start_frame)
+                                        end_time = parse_time(self.FPS, self.end_frame)
+                                        out = cv2.VideoWriter(f"{video_store_path}/score_{self.score}_{start_time}_{end_time}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
                                                               int(self.FPS / self.frame_rate), (self.frame_width, self.frame_height))
                                         for img in joint_img_list:
                                             out.write(img)
                                         joint_img_list = []
                                         out.release()
 
-                                        save_path = f"{json_store_path}/score_{self.score}_{self.start_frame}_{self.end_frame}.json"
+                                        save_path = f"{json_store_path}/score_{self.score}.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(framesDict, f, indent=2)
                                         self.joint_list = []
@@ -250,7 +251,7 @@ class video_resolver:
 
                                         shot_list, pos_percentage = shot_recog.check_hit_frame(temp_code, score_joint_list, self.true_court_points)
                                         print(shot_list, pos_percentage)
-                                        success = shot_recog.add_result(f'{video_store_path}/', f"{video_store_path}/score_{self.score-1}_{self.start_frame}_{self.end_frame}.mp4", shot_list, self.true_court_points)
+                                        success = shot_recog.add_result(f'{video_store_path}/', f"{video_store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, self.true_court_points)
                                         if success:
                                             print(f'Finish score_{self.score}')
                                         # input 給 model 輸出 d
