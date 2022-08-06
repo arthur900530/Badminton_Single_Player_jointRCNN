@@ -339,14 +339,3 @@ def get_data(path):
     input = np.array(input)
     joint_list = np.array(joint_list)
     return input, joint_list
-
-# input, s_joint_list = get_data('E:/test_videos/outputs/p_test/score_15/score_15.json')
-# print(len(input), len(frame_num), len(s_joint_list))
-# print(s_joint_list[10].shape)
-# with open('E:/test_videos/outputs/p_test/score_15/score_15.json', 'r') as mp_json:
-#     frame_dict = json.load(mp_json)
-#
-# labels = []
-# for i in range(len(frame_dict['frames'])):
-#     labels.append(frame_dict['frames'][i]['label'])
-# print(labels, len(labels))
