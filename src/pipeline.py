@@ -248,7 +248,7 @@ class video_resolver:
                                         self.score += 1
                                         self.one_count = 0
                                         input, score_joint_list = shot_recog.get_data(save_path)
-
+                                        print(self.court_points, type(self.court_points))
                                         shot_list, pos_percentage = shot_recog.check_hit_frame(temp_code, score_joint_list, self.true_court_points)
                                         print(shot_list, pos_percentage)
                                         success = shot_recog.add_result(f'{video_store_path}/', f"{video_store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, self.true_court_points)
