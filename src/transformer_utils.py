@@ -236,6 +236,7 @@ def top_bottom(joint):
     return top, bottom
 
 def get_data(path, keypoints):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     x_avg = 0.8931713777441783
     x_stdev = 0.16368038263140244
     y_avg = 0.8750905019870867
@@ -272,4 +273,12 @@ def get_data(path, keypoints):
                 temp_x.append(joint[p][5:])
             joint_data.append(temp_x)
 
+    joint_data = torch.tensor(np.array(joint_data)).unsqueeze(0).to(torch.float32).to(device)
+    print(joint_data.shape)
+    print(joint_data)
+
     return joint_data
+
+kp = [[474, 433], [1446, 415], [382, 708], [1534, 704], [269, 1040], [1648, 1040]]
+
+get_data('E:/test_videos/outputs/p_test/json/score_0_285_546.json', kp)
