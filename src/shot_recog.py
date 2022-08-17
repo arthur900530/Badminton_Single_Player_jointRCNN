@@ -272,13 +272,13 @@ def shot_recog(first_coord, second_coord, d, bounds):
 def check_shot(pos_top, pos_bot, serve):
     if serve == 'top':
         if pos_top == 'front' and pos_bot == 'front':
-            return '↓ 小球'
+            return '↓ 短球'
         if pos_top == 'front' and pos_bot == 'mid':
-            return '↓ 平球'
+            return '↓ 撲球'
         if pos_top == 'front' and pos_bot == 'back':
             return '↓ 挑球'
         if pos_top == 'mid' and pos_bot == 'front':
-            return '↓ 小球'
+            return '↓ 短球'
         if pos_top == 'mid' and pos_bot == 'mid':
             return '↓ 平球'
         if pos_top == 'mid' and pos_bot == 'back':
@@ -288,16 +288,16 @@ def check_shot(pos_top, pos_bot, serve):
         if pos_top == 'back' and pos_bot == 'mid':
             return '↓ 殺球'
         if pos_top == 'back' and pos_bot == 'back':
-            return '↓ 長球'
+            return '↓ 高遠球'
     if serve == 'bot':
         if pos_top == 'front' and pos_bot == 'front':
-            return '↑ 小球'
+            return '↑ 短球'
         if pos_top == 'front' and pos_bot == 'mid':
-            return '↑ 小球'
+            return '↑ 短球'
         if pos_top == 'front' and pos_bot == 'back':
             return '↑ 切球'
         if pos_top == 'mid' and pos_bot == 'front':
-            return '↑ 平球'
+            return '↑ 撲球'
         if pos_top == 'mid' and pos_bot == 'mid':
             return '↑ 平球'
         if pos_top == 'mid' and pos_bot == 'back':
@@ -307,7 +307,7 @@ def check_shot(pos_top, pos_bot, serve):
         if pos_top == 'back' and pos_bot == 'mid':
             return '↑ 挑球'
         if pos_top == 'back' and pos_bot == 'back':
-            return '↑ 長球'
+            return '↑ 高遠球'
 
 
 def get_data(path):
