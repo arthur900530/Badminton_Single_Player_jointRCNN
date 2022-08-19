@@ -7,7 +7,7 @@ from torchvision.transforms import functional as F
 import scene_utils
 import shot_recog
 from scene_utils import scene_classifier
-from utility import check_dir, get_path, parse_time
+from utility import check_dir, get_path, parse_time, top_bottom, get_area_bound
 
 
 class video_resolver:
@@ -160,6 +160,9 @@ class video_resolver:
     def draw_keypoints(self, outputs, image):
         edges = [(0, 1), (0, 2), (2, 4), (1, 3), (6, 8), (8, 10), (11, 12), (5, 7),
                  (7, 9), (5, 11), (11, 13), (13, 15), (6, 12), (12, 14), (14, 16), (5, 6)]
+        # bounds = get_area_bound(self.court_points)
+        color1 = (255, 0, 0)
+        color2 = (0, 0, 255)
         playerJoints = []
         b = outputs[0]['boxes'].cpu().detach().numpy()
         j = outputs[0]['keypoints'].cpu().detach().numpy()
@@ -169,18 +172,39 @@ class video_resolver:
 
         fit, combination = self.check_pos(topScores, b)
 
+        top, bot = top_bottom([j[topScores[combination[0]]], j[topScores[combination[1]]]])
+
         if fit:
             for c in combination:
+                if c == top:
+                    color = color1
+                else:
+                    color = color2
                 i = topScores[c]
                 keypoints = j[i]
+                box = b[i]
+                # print(box, box[2])
                 keypoints = keypoints[:, :].reshape(-1, 3)
                 playerJoints.append(j[i].tolist())
+                overlay = image.copy()
+                cv2.ellipse(overlay, (int((box[2]+box[0])/2), int(box[3])), (int((box[2]-box[0])/1.8), int((box[3]-box[1])/10)),
+                            0, 0, 360, color, 5)
+                # court bound point
+                # for bound in bounds:
+                #     cv2.circle(overlay, tuple((int(self.frame_width / 2 - 2), int(bound[0]))), 5, (255, 255, 0), 10)
+                #     cv2.circle(overlay, tuple((int(self.frame_width / 2 - 2), int(bound[1]))), 5, (255, 255, 0), 10)
+                for kps in [self.court_points]:
+                    for idx, kp in enumerate(kps):
+                        cv2.circle(overlay, tuple(kp), 5, (255, 255, 0), 10)
+                alpha = 0.4
+                image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
+
                 for p in range(keypoints.shape[0]):
                     cv2.circle(image, (int(keypoints[p, 0]), int(keypoints[p, 1])), 3, (0, 0, 255), thickness=-1,
                                lineType=cv2.FILLED)
-                    cv2.putText(image, str(i), (int(keypoints[15, 0]), int(keypoints[15, 1])), cv2.FONT_HERSHEY_DUPLEX,
-                                1, (0, 255, 255), 1,
-                                cv2.LINE_AA)
+                    # cv2.putText(image, str(i), (int(keypoints[15, 0]), int(keypoints[15, 1])), cv2.FONT_HERSHEY_DUPLEX,
+                    #             1, (0, 255, 255), 1,
+                    #             cv2.LINE_AA)
                 for ie, e in enumerate(edges):
                     # get different colors for the edges
                     rgb = matplotlib.colors.hsv_to_rgb([ie / float(len(edges)), 1.0, 1.0])
@@ -287,9 +311,9 @@ class video_resolver:
                                 })
 
                             # add features
-                            for kps in [self.court_points]:
-                                for idx, kp in enumerate(kps):
-                                    cv2.circle(output_image, tuple(kp), 5, (255, 255, 0), 10)
+                            # for kps in [self.court_points]:
+                            #     for idx, kp in enumerate(kps):
+                            #         cv2.circle(output_image, tuple(kp), 5, (255, 255, 0), 10)
                             # text = f"Frame count: {self.saved_count}, Court: True, Checkpoint: {self.checkpoint}, Score: {self.score}"
                             # cv2.putText(output_image, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1,
                             #             cv2.LINE_AA)

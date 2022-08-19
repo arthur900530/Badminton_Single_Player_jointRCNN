@@ -96,14 +96,15 @@ def add_result(base, vid_path, shot_list, court_points):
     count = 0
     i = 0
     imax = len(shot_list)
+
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            for a in areas:
-                cv2.polylines(frame, pts=[a[0]], isClosed=True, color=a[1], thickness=1)
-            for b in bounds:
-                cv2.circle(frame, tuple((int(frame_width/2 - 2), int(b[0]))), 5, (255, 255, 0), 10)
-                cv2.circle(frame, tuple((int(frame_width / 2 - 2), int(b[1]))), 5, (255, 255, 0), 10)
+            # for a in areas:
+            #     cv2.polylines(frame, pts=[a[0]], isClosed=True, color=a[1], thickness=1)
+            # for b in bounds:
+            #     cv2.circle(frame, tuple((int(frame_width/2 - 2), int(b[0]))), 5, (255, 255, 0), 10)
+            #     cv2.circle(frame, tuple((int(frame_width / 2 - 2), int(b[1]))), 5, (255, 255, 0), 10)
             bound = shot_list[i][2]
             if bound > count:
                 text = shot_list[i][0]
