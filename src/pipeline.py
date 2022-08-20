@@ -161,8 +161,10 @@ class video_resolver:
         edges = [(0, 1), (0, 2), (2, 4), (1, 3), (6, 8), (8, 10), (11, 12), (5, 7),
                  (7, 9), (5, 11), (11, 13), (13, 15), (6, 12), (12, 14), (14, 16), (5, 6)]
         # bounds = get_area_bound(self.court_points)
-        color1 = (255, 0, 0)
-        color2 = (0, 0, 255)
+        color1 = (217, 146, 65)
+        color2 = (90, 31, 255)
+        color3 = (90, 48, 0)
+        color4 = (66, 6, 219)
         playerJoints = []
         b = outputs[0]['boxes'].cpu().detach().numpy()
         j = outputs[0]['keypoints'].cpu().detach().numpy()
@@ -178,8 +180,10 @@ class video_resolver:
             for c in combination:
                 if c == top:
                     color = color1
+                    sub_color = color3
                 else:
                     color = color2
+                    sub_color = color4
                 i = topScores[c]
                 keypoints = j[i]
                 box = b[i]
@@ -187,8 +191,13 @@ class video_resolver:
                 keypoints = keypoints[:, :].reshape(-1, 3)
                 playerJoints.append(j[i].tolist())
                 overlay = image.copy()
-                cv2.ellipse(overlay, (int((box[2]+box[0])/2), int(box[3])), (int((box[2]-box[0])/1.8), int((box[3]-box[1])/10)),
-                            0, 0, 360, color, 5)
+                cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
+                            (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
+                            0, 0, 360, color, 3)
+                cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
+                            (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
+                            0, int(((self.one_count - 1) * 10)),
+                            int((30 + (self.one_count - 1) * 10)), sub_color, 3)
                 # court bound point
                 # for bound in bounds:
                 #     cv2.circle(overlay, tuple((int(self.frame_width / 2 - 2), int(bound[0]))), 5, (255, 255, 0), 10)
