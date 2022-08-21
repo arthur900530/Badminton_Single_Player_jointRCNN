@@ -76,7 +76,6 @@ class video_resolver:
         for kps in output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             keypoints.append([list(map(int, kp[:2])) for kp in kps])
         self.true_court_points = copy.deepcopy(keypoints[0])
-        print(self.true_court_points)
         keypoints[0][0][0] -= 80
         keypoints[0][0][1] -= 80
         keypoints[0][1][0] += 80
@@ -88,7 +87,6 @@ class video_resolver:
         keypoints[0][5][0] += 80
         keypoints[0][5][1] = min(keypoints[0][5][1] + 80, self.frame_height - 40)
         self.court_points = keypoints[0]
-        print(self.court_points)
         l_a = (self.court_points[0][1] - self.court_points[4][1]) / (
                     self.court_points[0][0] - self.court_points[4][0])
         l_b = self.court_points[0][1] - l_a * self.court_points[0][0]
@@ -295,7 +293,9 @@ class video_resolver:
                                 else:
                                     if self.court_points == None:
                                         _ = self.get_court_info(img=self.wait_list[2][2])
+                                        print(self.true_court_points)
                                         print("Get!")
+                                        self.court_kp_model = None
                                     # self.one_count += 1
                                 self.last_type = p
                         else:
