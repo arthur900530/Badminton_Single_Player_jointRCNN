@@ -7,7 +7,7 @@ from torchvision.transforms import functional as F
 import scene_utils
 import shot_recog
 from scene_utils import scene_classifier
-from utility import check_dir, get_path, parse_time, top_bottom, get_area_bound
+from utility import check_dir, get_path, parse_time, top_bottom, get_area_bound, cal_dis
 
 
 class video_resolver:
@@ -87,14 +87,15 @@ class video_resolver:
         keypoints[0][5][0] += 80
         keypoints[0][5][1] = min(keypoints[0][5][1] + 80, self.frame_height - 40)
         self.court_points = keypoints[0]
-        l_a = (self.court_points[0][1] - self.court_points[4][1]) / (
-                    self.court_points[0][0] - self.court_points[4][0])
-        l_b = self.court_points[0][1] - l_a * self.court_points[0][0]
-        r_a = (self.court_points[1][1] - self.court_points[5][1]) / (
-                    self.court_points[1][0] - self.court_points[5][0])
-        r_b = self.court_points[1][1] - r_a * self.court_points[1][0]
-        mp_y = (self.court_points[2][1] + self.court_points[3][1]) / 2
+        l_a = (self.true_court_points[0][1] - self.true_court_points[4][1]) / (
+                    self.true_court_points[0][0] - self.true_court_points[4][0])
+        l_b = self.true_court_points[0][1] - l_a * self.true_court_points[0][0]
+        r_a = (self.true_court_points[1][1] - self.true_court_points[5][1]) / (
+                    self.true_court_points[1][0] - self.true_court_points[5][0])
+        r_b = self.true_court_points[1][1] - r_a * self.true_court_points[1][0]
+        mp_y = (self.true_court_points[2][1] + self.true_court_points[3][1]) / 2
         self.court_info = [l_a, l_b, r_a, r_b, mp_y]
+        print(cal_dis(self.true_court_points[1], self.true_court_points[5]))
         return True
 
     def check_type(self, last_type):
@@ -189,20 +190,71 @@ class video_resolver:
                 keypoints = keypoints[:, :].reshape(-1, 3)
                 playerJoints.append(j[i].tolist())
                 overlay = image.copy()
-                cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
-                            (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
-                            0, 0, 360, color, 3)
-                cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
-                            (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
-                            0, int(((self.one_count - 1) * 10)),
-                            int((30 + (self.one_count - 1) * 10)), sub_color, 3)
+
                 # court bound point
                 # for bound in bounds:
                 #     cv2.circle(overlay, tuple((int(self.frame_width / 2 - 2), int(bound[0]))), 5, (255, 255, 0), 10)
                 #     cv2.circle(overlay, tuple((int(self.frame_width / 2 - 2), int(bound[1]))), 5, (255, 255, 0), 10)
-                for kps in [self.court_points]:
+                a = [[609, 513],
+                     [782, 513],
+                     [956, 513],
+                     [1130, 513],
+                     [1304, 513],
+                     [585, 577],
+                     [770, 577],
+                     [956, 577],
+                     [1142, 577],
+                     [1328, 577],
+                     [561, 641],
+                     [758, 641],
+                     [956, 641],
+                     [1154, 641],
+                     [1352, 641],
+                     [538, 706],
+                     [748, 706],
+                     [958, 706],
+                     [1168, 706],
+                     [1377, 706],
+                     [505, 805],
+                     [732, 805],
+                     [958, 805],
+                     [1184, 805],
+                     [1411, 805],
+                     [472, 904],
+                     [715, 904],
+                     [958, 904],
+                     [1202, 904],
+                     [1445, 904],
+                     [438, 1002],
+                     [698, 1002],
+                     [958, 1002],
+                     [1218, 1002],
+                     [1479, 1002]]
+
+                c_edges = [[0, 1],[0, 5],[1, 2],[1, 6],[2, 3],[2, 7],[3, 4],[3, 8],[4, 9],
+                           [5, 6],[5, 10],[6, 7],[6, 11],[7, 8],[7, 12],[8, 9],[8, 13],[9, 14],
+                           [10, 11],[10, 15],[11, 12],[11, 16],[12, 13],[12, 17],[13, 14],[13, 18],
+                           [14, 19],[15, 16],[15, 20],[16, 17],[16, 21],[17, 18],[17, 22],[18, 19],
+                           [18, 23],[19, 24],[20, 21],[20, 25],[21, 22],[21, 26],[22, 23],[22, 27],
+                           [23, 24],[23, 28],[24, 29],[25, 26],[25, 30],[26, 27],[26, 31],[27, 28],
+                           [27, 32],[28, 29],[28, 33],[29, 34],[30,31],[31,32],[32,33],[33,34]]
+                for e in c_edges:
+                    cv2.line(overlay, (int(a[e[0]][0]), int(a[e[0]][1])),
+                             (int(a[e[1]][0]), int(a[e[1]][1])),
+                             (53, 195, 242), 2, lineType=cv2.LINE_AA)
+                # for kps in [self.court_points]:
+                for kps in [a]:
                     for idx, kp in enumerate(kps):
-                        cv2.circle(overlay, tuple(kp), 5, (255, 255, 0), 10)
+                        cv2.circle(overlay, tuple(kp), 2, (5, 135, 242), 10)
+
+                cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
+                            (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
+                            0, 0, 360, color, 15)
+                cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
+                            (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
+                            0, int(((self.one_count - 1) * 10)),
+                            int((30 + (self.one_count - 1) * 10)), sub_color, 6)
+
                 alpha = 0.4
                 image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
