@@ -198,6 +198,6 @@ def predict(model, input_sequence):
     return pred_indices
 
 
-kp = [[474, 433], [1446, 415], [382, 708], [1534, 704], [269, 1040], [1648, 1040]]
-
-get_data('E:/test_videos/outputs/p_test/json/score_0_285_546.json', kp)
+# kp = [[474, 433], [1446, 415], [382, 708], [1534, 704], [269, 1040], [1648, 1040]]
+#
+# get_data('E:/test_videos/outputs/p_test/json/score_0_285_546.json', kp)
