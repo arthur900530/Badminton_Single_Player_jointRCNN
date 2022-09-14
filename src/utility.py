@@ -1,8 +1,64 @@
 import os
 import numpy as np
 
+
+def correction(court_kp):
+    ty = np.round((court_kp[0][1] + court_kp[1][1]) / 2)
+    my = (court_kp[2][1] + court_kp[3][1]) / 2
+    by = np.round((court_kp[4][1] + court_kp[5][1]) / 2)
+    court_kp[0][1] = ty
+    court_kp[1][1] = ty
+    court_kp[2][1] = my
+    court_kp[3][1] = my
+    court_kp[4][1] = by
+    court_kp[5][1] = by
+    return court_kp
+
+
+def extension(court_kp):
+    tlspace = np.array(
+        [np.round((court_kp[0][0] - court_kp[2][0]) / 3), np.round((court_kp[2][1] - court_kp[0][1]) / 3)], dtype=int)
+    trspace = np.array(
+        [np.round((court_kp[3][0] - court_kp[1][0]) / 3), np.round((court_kp[3][1] - court_kp[1][1]) / 3)], dtype=int)
+    blspace = np.array(
+        [np.round((court_kp[2][0] - court_kp[4][0]) / 3), np.round((court_kp[4][1] - court_kp[2][1]) / 3)], dtype=int)
+    brspace = np.array(
+        [np.round((court_kp[5][0] - court_kp[3][0]) / 3), np.round((court_kp[5][1] - court_kp[3][1]) / 3)], dtype=int)
+
+    p2 = np.array([court_kp[0][0] - tlspace[0], court_kp[0][1] + tlspace[1]])
+    p3 = np.array([court_kp[1][0] + trspace[0], court_kp[1][1] + trspace[1]])
+    p4 = np.array([p2[0] - tlspace[0], p2[1] + tlspace[1]])
+    p5 = np.array([p3[0] + trspace[0], p3[1] + trspace[1]])
+
+    p8 = np.array([court_kp[2][0] - blspace[0], court_kp[2][1] + blspace[1]])
+    p9 = np.array([court_kp[3][0] + brspace[0], court_kp[3][1] + brspace[1]])
+    p10 = np.array([p8[0] - blspace[0], p8[1] + blspace[1]])
+    p11 = np.array([p9[0] + brspace[0], p9[1] + brspace[1]])
+
+    kp = np.array([court_kp[0], court_kp[1],
+                   p2, p3, p4, p5,
+                   court_kp[2], court_kp[3],
+                   p8, p9, p10, p11,
+                   court_kp[4], court_kp[5]], dtype=int)
+
+    ukp = []
+
+    for i in range(0, 13, 2):
+        sub2 = np.round((kp[i] + kp[i + 1]) / 2)
+        sub1 = np.round((kp[i] + sub2) / 2)
+        sub3 = np.round((kp[i + 1] + sub2) / 2)
+        ukp.append(kp[i])
+        ukp.append(sub1)
+        ukp.append(sub2)
+        ukp.append(sub3)
+        ukp.append(kp[i + 1])
+    ukp = np.array(ukp, dtype=int)
+    return ukp
+
+
 def cal_dis(p1, p2):
     return np.sqrt(np.square(p1[0]-p2[0]) + np.square(p1[1]-p2[1]))
+
 
 def check_dir(path):
     isExit = os.path.exists(path)

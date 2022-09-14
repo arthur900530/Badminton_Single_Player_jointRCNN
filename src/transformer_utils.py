@@ -29,60 +29,47 @@ def top_bottom(joint):
     return top, bottom
 
 
-def get_data(root, sc_root='model_weights/scaler_12.pickle'):
+def get_data(path, sc_root='model_weights/scaler_12.pickle'):
     sc = pickle.load(open(sc_root, 'rb'))
     c_count = 0
     n_count = 0
 
     data_x = []
 
-    folder_paths = get_path(root)
+    vid_name = path.split('/')[-3]
+    print(vid_name)
 
-    for path in folder_paths:
-        vid_name = path.split('/')[-1]
-        print(vid_name)
+    with open(path, 'r') as score_json:
+        frame_dict = json.load(score_json)
 
-        score_json_paths = get_path(path)
-        for json_path in score_json_paths:
-            check = []
-            with open(json_path, 'r') as score_json:
-                frame_dict = json.load(score_json)
+    score_x = []
 
-            # get clean sequence
-            for i in range(len(frame_dict['frames'])):
-                check.append(frame_dict['frames'][i]['label'])
-            if check[0] == 0 and check[-1] == 0 and (1 in check or 2 in check):
-                pass
-            else:
-                continue
+    for i in range(len(frame_dict['frames'])):
+        temp_x = []
+        joint = np.array(frame_dict['frames'][i]['joint'])
 
-            score_x = []
+        top, bot = top_bottom(joint)
+        if top != 1:
+            c_count += 1
+            t = []
+            t.append(joint[bot])
+            t.append(joint[top])
+            joint = np.array(t)
+        else:
+            n_count += 1
 
-            for i in range(len(frame_dict['frames'])):
-                temp_x = []
-                joint = np.array(frame_dict['frames'][i]['joint'])
+        for p in range(2):
+            temp_x.append(joint[p][5:])  # ignore head part
+        temp_x = np.array(temp_x)  # 2, 12, 2
+        temp_x = np.reshape(temp_x, [1, -1])
+        temp_x = sc.transform(temp_x)
+        temp_x = np.reshape(temp_x, [2, 12, 2])
 
-                top, bot = top_bottom(joint)
-                if top != 1:
-                    c_count += 1
-                    t = []
-                    t.append(joint[bot])
-                    t.append(joint[top])
-                    joint = np.array(t)
-                else:
-                    n_count += 1
+        score_x.append(temp_x)
 
-                for p in range(2):
-                    temp_x.append(joint[p][5:])  # ignore head part
-                temp_x = np.array(temp_x)  # 2, 12, 2
-                temp_x = np.reshape(temp_x, [1, -1])
-                temp_x = sc.transform(temp_x)
-                temp_x = np.reshape(temp_x, [2, 12, 2])
+    score_x = np.array(score_x)
+    data_x.append(score_x)
 
-                score_x.append(temp_x)
-
-            score_x = np.array(score_x)
-            data_x.append(score_x)
     return data_x
 
 
@@ -179,7 +166,7 @@ class Optimus_Prime(nn.Module):
 def build_model(path):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = Optimus_Prime(
-        num_tokens=4, dim_model=512, num_heads=8, num_encoder_layers=8, num_decoder_layers=8, dim_feedforward=1024,
+        num_tokens=4, dim_model=512, num_heads=8, num_encoder_layers=8, dim_feedforward=1024,
         dropout_p=0
     ).to(device)
 

@@ -13,7 +13,9 @@ score_1_d_list = [1,1,1,1,1,1,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,
 
 
 def top_bottom(joint):
-    if joint[0][16][1] > joint[1][16][1]:
+    a = joint[0][-1][1] + joint[0][-2][1]
+    b = joint[1][-1][1] + joint[1][-2][1]
+    if a > b:
         top = 1
         bottom = 0
     else:
@@ -133,8 +135,8 @@ def get_pos_percentage(joint_list, bounds):
     bot_back = 0
     for i in range(len(joint_list)):
         top, bot = top_bottom(joint_list[i])
-        t_coord = (joint_list[i][top][16][1] + joint_list[i][top][15][1]) / 2
-        b_coord = (joint_list[i][bot][16][1] + joint_list[i][bot][15][1]) / 2
+        t_coord = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
+        b_coord = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
         t_pos = check_pos(t_coord, bounds, 'top')
         b_pos = check_pos(b_coord, bounds, 'bot')
         if t_pos == 'front':
@@ -158,12 +160,10 @@ def get_pos_percentage(joint_list, bounds):
     return result
 
 def check_hit_frame(direction_list, joint_list, court_points):
-    if direction_list == 0:
-        direction_list = score_0_d_list
-    elif direction_list == 1:
-        direction_list = score_1_d_list
+    joint_list = joint_list.squeeze(0)  # seq len, 2, 12, 2
     bounds = get_area_bound(court_points)
     pos_percentage = get_pos_percentage(joint_list, bounds)
+
     first_coord = None
     shot_list = []
     got_first = False
@@ -173,13 +173,13 @@ def check_hit_frame(direction_list, joint_list, court_points):
         if not got_first:
             if d == 1:
                 top, bot = top_bottom(joint_list[i])
-                first_coord = (joint_list[i][top][16][1] + joint_list[i][top][15][1]) / 2
+                first_coord = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
                 first_i = i
                 got_first = True
                 last_d = 1
             elif d == 2:
                 top, bot = top_bottom(joint_list[i])
-                first_coord = (joint_list[i][bot][16][1] + joint_list[i][bot][15][1]) / 2
+                first_coord = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
                 first_i = i
                 got_first = True
                 last_d = 2
@@ -191,7 +191,7 @@ def check_hit_frame(direction_list, joint_list, court_points):
             else:
                 change = False
             top, bot = top_bottom(joint_list[i])
-            second_coord = (joint_list[i][bot][16][1] + joint_list[i][bot][15][1]) / 2
+            second_coord = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
             second_i = i
             shot = shot_recog(first_coord, second_coord, d, bounds)
             shot_list.append((shot, first_i, second_i))
@@ -207,7 +207,7 @@ def check_hit_frame(direction_list, joint_list, court_points):
             else:
                 change = False
             top, bot = top_bottom(joint_list[i])
-            second_coord = (joint_list[i][top][16][1] + joint_list[i][top][15][1]) / 2
+            second_coord = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
             second_i = i
             shot = shot_recog(first_coord, second_coord, d, court_points)
             shot_list.append((shot, first_i, second_i))

@@ -4,10 +4,11 @@ from PIL import Image
 import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
-import scene_utils
+import scene_utils, transformer_utils
 import shot_recog
+from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
-from utility import check_dir, get_path, parse_time, top_bottom, get_area_bound, cal_dis
+from utility import check_dir, get_path, parse_time, top_bottom, get_area_bound, cal_dis, correction, extension
 
 
 class video_resolver:
@@ -22,6 +23,7 @@ class video_resolver:
         self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True, num_keypoints=17)
         self.model.to(self.device).eval()
         self.scene_model = scene_utils.build_model('model_weights/scene_classifier.pt', self.device)
+        self.bsp_model = transformer_utils.build_model('model_weights/weights/clean_seq_labling2.pt')
 
         self.court_kp_model = torch.load('model_weights/court_kpRCNN.pth')
         self.court_kp_model.to(self.device).eval()
@@ -247,13 +249,13 @@ class video_resolver:
                     for idx, kp in enumerate(kps):
                         cv2.circle(overlay, tuple(kp), 2, (5, 135, 242), 10)
 
-                cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
-                            (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
-                            0, 0, 360, color, 15)
-                cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
-                            (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
-                            0, int(((self.one_count - 1) * 10)),
-                            int((30 + (self.one_count - 1) * 10)), sub_color, 6)
+                # cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
+                #             (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
+                #             0, 0, 360, color, 15)
+                # cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
+                #             (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
+                #             0, int(((self.one_count - 1) * 10)),
+                #             int((30 + (self.one_count - 1) * 10)), sub_color, 6)
 
                 alpha = 0.4
                 image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
@@ -278,7 +280,6 @@ class video_resolver:
 
     def resolve(self):
         joint_img_list = []
-        temp_code = 0
         while self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
@@ -311,34 +312,30 @@ class video_resolver:
                                             self.start_recording = True
                                             self.end_frame = self.frame_count
                                         framesDict = {'frames': self.joint_list}
-                                        video_store_path = f"{self.base}/outputs/{self.vid_name}/video"
-                                        json_store_path = f"{self.base}/outputs/{self.vid_name}/json"
-                                        check_dir(video_store_path)
-                                        check_dir(json_store_path)
+                                        store_path = f"{self.base}/outputs/{self.vid_name}/score_{self.score}"
+                                        check_dir(store_path)
                                         start_time = parse_time(self.FPS, self.start_frame)
                                         end_time = parse_time(self.FPS, self.end_frame)
-                                        out = cv2.VideoWriter(f"{video_store_path}/score_{self.score}_{start_time}_{end_time}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
+                                        out = cv2.VideoWriter(f"{store_path}/score_{self.score}_{start_time}_{end_time}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
                                                               int(self.FPS / self.frame_rate), (self.frame_width, self.frame_height))
                                         for img in joint_img_list:
                                             out.write(img)
                                         joint_img_list = []
                                         out.release()
 
-                                        save_path = f"{json_store_path}/score_{self.score}.json"
+                                        save_path = f"{store_path}/score_{self.score}.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(framesDict, f, indent=2)
                                         self.joint_list = []
                                         self.score += 1
                                         self.one_count = 0
-                                        input, score_joint_list = shot_recog.get_data(save_path)
-                                        print(self.court_points, type(self.court_points))
-                                        shot_list, pos_percentage = shot_recog.check_hit_frame(temp_code, score_joint_list, self.true_court_points)
+                                        joint_list = torch.tensor(np.array(transformer_utils.get_data(save_path)), dtype=torch.float32).to(self.device)
+                                        shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
+                                        shot_list, pos_percentage = shot_recog.check_hit_frame(shuttle_direction, joint_list, self.true_court_points)
                                         print(shot_list, pos_percentage)
-                                        success = shot_recog.add_result(f'{video_store_path}/', f"{video_store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, self.true_court_points)
+                                        success = shot_recog.add_result(f'{store_path}/', f"{store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, self.true_court_points)
                                         if success:
                                             print(f'Finish score_{self.score}')
-                                        # input 給 model 輸出 d
-                                        # d =
                                     else:
                                         self.joint_list = []
                                         self.one_count = 0
