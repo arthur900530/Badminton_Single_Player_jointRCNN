@@ -29,6 +29,34 @@ def top_bottom(joint):
     return top, bottom
 
 
+def get_original_data(path):
+    data_x = []
+
+    vid_name = path.split('/')[-3]
+
+    with open(path, 'r') as score_json:
+        frame_dict = json.load(score_json)
+
+    score_x = []
+
+    for i in range(len(frame_dict['frames'])):
+        joint = np.array(frame_dict['frames'][i]['joint'])
+
+        top, bot = top_bottom(joint)
+        if top != 1:
+            t = []
+            t.append(joint[bot])
+            t.append(joint[top])
+            joint = np.array(t)
+
+        score_x.append(joint)
+
+    score_x = np.array(score_x)
+    data_x.append(score_x)
+
+    return data_x
+
+
 def get_data(path, sc_root='model_weights/scaler_12.pickle'):
     sc = pickle.load(open(sc_root, 'rb'))
     c_count = 0
@@ -37,7 +65,6 @@ def get_data(path, sc_root='model_weights/scaler_12.pickle'):
     data_x = []
 
     vid_name = path.split('/')[-3]
-    print(vid_name)
 
     with open(path, 'r') as score_json:
         frame_dict = json.load(score_json)

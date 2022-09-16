@@ -79,6 +79,7 @@ class video_resolver:
             keypoints.append([list(map(int, kp[:2])) for kp in kps])
         self.true_court_points = copy.deepcopy(keypoints[0])
         self.multi_points = extension(correction(np.array(keypoints[0]))).tolist()
+        print(self.multi_points)
         keypoints[0][0][0] -= 80
         keypoints[0][0][1] -= 80
         keypoints[0][1][0] += 80
@@ -198,41 +199,6 @@ class video_resolver:
                 # for bound in bounds:
                 #     cv2.circle(overlay, tuple((int(self.frame_width / 2 - 2), int(bound[0]))), 5, (255, 255, 0), 10)
                 #     cv2.circle(overlay, tuple((int(self.frame_width / 2 - 2), int(bound[1]))), 5, (255, 255, 0), 10)
-                a = [[609, 513],
-                     [782, 513],
-                     [956, 513],
-                     [1130, 513],
-                     [1304, 513],
-                     [585, 577],
-                     [770, 577],
-                     [956, 577],
-                     [1142, 577],
-                     [1328, 577],
-                     [561, 641],
-                     [758, 641],
-                     [956, 641],
-                     [1154, 641],
-                     [1352, 641],
-                     [538, 706],
-                     [748, 706],
-                     [958, 706],
-                     [1168, 706],
-                     [1377, 706],
-                     [505, 805],
-                     [732, 805],
-                     [958, 805],
-                     [1184, 805],
-                     [1411, 805],
-                     [472, 904],
-                     [715, 904],
-                     [958, 904],
-                     [1202, 904],
-                     [1445, 904],
-                     [438, 1002],
-                     [698, 1002],
-                     [958, 1002],
-                     [1218, 1002],
-                     [1479, 1002]]
 
                 c_edges = [[0, 1],[0, 5],[1, 2],[1, 6],[2, 3],[2, 7],[3, 4],[3, 8],[4, 9],
                            [5, 6],[5, 10],[6, 7],[6, 11],[7, 8],[7, 12],[8, 9],[8, 13],[9, 14],
@@ -242,8 +208,8 @@ class video_resolver:
                            [23, 24],[23, 28],[24, 29],[25, 26],[25, 30],[26, 27],[26, 31],[27, 28],
                            [27, 32],[28, 29],[28, 33],[29, 34],[30,31],[31,32],[32,33],[33,34]]
                 for e in c_edges:
-                    cv2.line(overlay, (int(a[e[0]][0]), int(a[e[0]][1])),
-                             (int(a[e[1]][0]), int(a[e[1]][1])),
+                    cv2.line(overlay, (int(self.multi_points[e[0]][0]), int(self.multi_points[e[0]][1])),
+                             (int(self.multi_points[e[1]][0]), int(self.multi_points[e[1]][1])),
                              (53, 195, 242), 2, lineType=cv2.LINE_AA)
                 # for kps in [self.court_points]:
                 for kps in [self.multi_points]:
@@ -332,10 +298,11 @@ class video_resolver:
                                         self.one_count = 0
 
                                         joint_list = torch.tensor(np.array(transformer_utils.get_data(save_path)), dtype=torch.float32).to(self.device)
+                                        orig_joint_list = torch.tensor(np.array(transformer_utils.get_original_data(save_path)), dtype=torch.float32).to(self.device)
                                         shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
-                                        print(shuttle_direction)
-                                        shot_list, pos_percentage = shot_recog.check_hit_frame(shuttle_direction, joint_list, self.true_court_points)
-
+                                        print(shuttle_direction, orig_joint_list.shape)
+                                        shot_list, pos_percentage = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points)
+                                        print(shot_list, pos_percentage)
                                         success = shot_recog.add_result(f'{store_path}/', f"{store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, self.true_court_points)
                                         if success:
                                             print(f'Finish score_{self.score}')
