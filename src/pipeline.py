@@ -55,6 +55,7 @@ class video_resolver:
 
         self.court_points = None
         self.true_court_points = None
+        self.multi_points = None
         self.court_info = None
         self.joint_list = []
         self.wait_list = []
@@ -72,12 +73,12 @@ class video_resolver:
         scores = output[0]['scores'].detach().cpu().numpy()
         high_scores_idxs = np.where(scores > 0.7)[0].tolist()
         post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs],
-                                            output[0]['scores'][high_scores_idxs],
-                                            0.3).cpu().numpy()
+                                            output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy()
         keypoints = []
         for kps in output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             keypoints.append([list(map(int, kp[:2])) for kp in kps])
         self.true_court_points = copy.deepcopy(keypoints[0])
+        self.multi_points = extension(correction(np.array(keypoints[0]))).tolist()
         keypoints[0][0][0] -= 80
         keypoints[0][0][1] -= 80
         keypoints[0][1][0] += 80
@@ -97,7 +98,7 @@ class video_resolver:
         r_b = self.true_court_points[1][1] - r_a * self.true_court_points[1][0]
         mp_y = (self.true_court_points[2][1] + self.true_court_points[3][1]) / 2
         self.court_info = [l_a, l_b, r_a, r_b, mp_y]
-        print(cal_dis(self.true_court_points[1], self.true_court_points[5]))
+
         return True
 
     def check_type(self, last_type):
@@ -245,7 +246,7 @@ class video_resolver:
                              (int(a[e[1]][0]), int(a[e[1]][1])),
                              (53, 195, 242), 2, lineType=cv2.LINE_AA)
                 # for kps in [self.court_points]:
-                for kps in [a]:
+                for kps in [self.multi_points]:
                     for idx, kp in enumerate(kps):
                         cv2.circle(overlay, tuple(kp), 2, (5, 135, 242), 10)
 
@@ -329,10 +330,12 @@ class video_resolver:
                                         self.joint_list = []
                                         self.score += 1
                                         self.one_count = 0
+
                                         joint_list = torch.tensor(np.array(transformer_utils.get_data(save_path)), dtype=torch.float32).to(self.device)
                                         shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
+                                        print(shuttle_direction)
                                         shot_list, pos_percentage = shot_recog.check_hit_frame(shuttle_direction, joint_list, self.true_court_points)
-                                        print(shot_list, pos_percentage)
+
                                         success = shot_recog.add_result(f'{store_path}/', f"{store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, self.true_court_points)
                                         if success:
                                             print(f'Finish score_{self.score}')
