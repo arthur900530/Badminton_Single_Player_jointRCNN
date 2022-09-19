@@ -301,8 +301,8 @@ class video_resolver:
                                         orig_joint_list = torch.tensor(np.array(transformer_utils.get_original_data(save_path)), dtype=torch.float32).to(self.device)
                                         shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
 
-                                        shot_list, pos_percentage = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points)
-                                        print(shot_list, pos_percentage)
+                                        shot_list, move_dir_list = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
+                                        print(shot_list, move_dir_list)
                                         success = shot_recog.add_result(f'{store_path}/', f"{store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, self.true_court_points)
                                         if success:
                                             print(f'Finish score_{self.score}')
