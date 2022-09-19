@@ -2,6 +2,167 @@ import os
 import numpy as np
 
 
+def cal_move_direction(c1, c2):
+    c1 = np.array(c1)
+    c2 = np.array(c2)
+    d = c2 - c1
+
+    if d[0] == 0:
+        if d[1] == 0:
+            return 'NM'
+        if d[1] > 0:
+            if d[1] == 1:
+                return 'LSB'
+            else:
+                return 'LLB'
+        else:
+            if d[1] == -1:
+                return 'LSF'
+            else:
+                return 'LLF'
+    if d[1] == 0:
+        if d[0] > 0:
+            if d[0] == 1:
+                return 'TSR'
+            else:
+                return 'TLR'
+        else:
+            if d[1] == -1:
+                return 'TSL'
+            else:
+                return 'TLL'
+    if d[0] > 0 and d[1] > 0:
+        if d[0] == 1:
+            if d[1] == 1:
+                return 'DSBR'
+            else:
+                return 'DLBR'
+        else:
+            return 'DLBR'
+
+    if d[0] < 0 and d[1] < 0:
+        if d[0] == -1:
+            if d[1] == -1:
+                return 'DSFL'
+            else:
+                return 'DLFL'
+        else:
+            return 'DLFL'
+
+    if d[0] < 0 and d[1] > 0:
+        if d[0] == -1:
+            if d[1] == 1:
+                return 'DSBL'
+            else:
+                return 'DLBL'
+        else:
+            return 'DLBL'
+
+    if d[0] > 0 and d[1] < 0:
+        if d[0] == 1:
+            if d[1] == -1:
+                return 'DSFR'
+            else:
+                return 'DLFR'
+        else:
+            return 'DLFR'
+
+    return False
+
+def cal_area(jp, p1, p2):
+    a = (p1[1] - p2[1]) / (p1[0] - p2[0])
+    b = p1[1] - a * p1[0]
+    j_hat = (jp[1] - b) / a
+    if j_hat > jp[0]:
+        return True        # left
+    else:
+        return False       # right
+
+def zone(test, a):
+    if test[1] < a[3][0][1]:              # top player
+        if test[1] < a[1][0][1]:          # top 1st row
+            if test[0] < a[1][2][0]:      # left side
+                left = cal_area(test, a[0][1], a[1][1])
+                if left:
+                    return [3, 2], True
+                else:
+                    return [2, 2], True
+            else:                         # right side
+                left = cal_area(test, a[0][3], a[1][3])
+                if left:
+                    return [1, 2], True
+                else:
+                    return [0, 2], True
+
+        elif test[1] < a[2][0][1]:        # top 2nd row
+            if test[0] < a[2][2][0]:      # left side
+                left = cal_area(test, a[1][1], a[2][1])
+                if left:
+                    return [3, 1], True
+                else:
+                    return [2, 1], True
+            else:                         # right side
+                left = cal_area(test, a[1][3], a[2][3])
+                if left:
+                    return [1, 1], True
+                else:
+                    return [0, 1], True
+        else:                             # top 3th row
+            if test[0] < a[3][2][0]:      # left side
+                left = cal_area(test, a[2][1], a[3][1])
+                if left:
+                    return [3, 0], True
+                else:
+                    return [2, 0], True
+            else:                         # right side
+                left = cal_area(test, a[2][3], a[3][3])
+                if left:
+                    return [1, 0], True
+                else:
+                    return [0, 0], True
+    else:                                 # bot player
+        if test[1] < a[4][0][1]:          # bot 1st row
+            if test[0] < a[4][2][0]:      # left side
+                left = cal_area(test, a[3][1], a[4][1])
+                if left:
+                    return [0, 0], False
+                else:
+                    return [1, 0], False
+            else:                         # right side
+                left = cal_area(test, a[3][3], a[4][3])
+                if left:
+                    return [2, 0], False
+                else:
+                    return [3, 0], False
+
+        elif test[1] < a[5][0][1]:        # bot 2nd row
+            if test[0] < a[5][2][0]:      # left side
+                left = cal_area(test, a[4][1], a[5][1])
+                if left:
+                    return [0, 1], False
+                else:
+                    return [1, 1], False
+            else:                         # right side
+                left = cal_area(test, a[4][3], a[5][3])
+                if left:
+                    return [2, 1], False
+                else:
+                    return [3, 1], False
+        else:                             # bot 3th row
+            if test[0] < a[6][2][0]:      # left side
+                left = cal_area(test, a[5][1], a[6][1])
+                if left:
+                    return [0, 2], False
+                else:
+                    return [1, 2], False
+            else:                         # right side
+                left = cal_area(test, a[5][3], a[6][3])
+                if left:
+                    return [2, 2], False
+                else:
+                    return [3, 2], False
+
+
 def correction(court_kp):
     ty = np.round((court_kp[0][1] + court_kp[1][1]) / 2)
     my = (court_kp[2][1] + court_kp[3][1]) / 2
