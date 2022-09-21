@@ -160,7 +160,68 @@ def get_pos_percentage(joint_list, bounds):
     }
     return result
 
-def check_hit_frame(direction_list, joint_list, court_points, multi_points):
+def check_hit_frame(direction_list, joint_list, court_points):
+    joint_list = joint_list.squeeze(0).cpu().numpy()  # seq len, 2, 12, 2
+    bounds = get_area_bound(court_points)
+    shot_list = []
+    got_first = False
+    last_d = 0
+    for i in range(len(direction_list)):
+        d = direction_list[i]
+        if not got_first:
+            if d == 1:
+                top, bot = top_bottom(joint_list[i])
+                first_y = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
+                first_i = i
+                got_first = True
+                last_d = 1
+            elif d == 2:
+                top, bot = top_bottom(joint_list[i])
+                first_y = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
+                first_i = i
+                got_first = True
+                last_d = 2
+            continue
+        if d != last_d and last_d == 1:
+            if d == 0:
+                d = 2
+                change = True
+            else:
+                change = False
+            top, bot = top_bottom(joint_list[i])
+            second_y = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
+            second_i = i
+            shot = shot_recog(first_y, second_y, d, bounds)
+            shot_list.append((shot, first_i, second_i))
+
+            first_i = second_i
+            last_d = d
+            if change:
+                last_d = 0
+            first_y = second_y
+
+        if d != last_d and last_d == 2:
+            if d == 0:
+                d = 1
+                change = True
+            else:
+                change = False
+            top, bot = top_bottom(joint_list[i])
+            second_y = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
+            second_i = i
+
+            shot = shot_recog(first_y, second_y, d, bounds)
+
+            shot_list.append((shot, first_i, second_i))
+            first_i = second_i
+            last_d = d
+            if change:
+                last_d = 0
+            first_y = second_y
+    return shot_list
+
+
+def check_move_dir(direction_list, joint_list, court_points, multi_points):
     joint_list = joint_list.squeeze(0).cpu().numpy()  # seq len, 2, 12, 2
     multi_points = np.array(multi_points)
     multi_points = np.reshape(multi_points, (7, 5, 2))
@@ -264,6 +325,7 @@ def get_area_bound(court_points):
 
     bounds = [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
     return bounds
+
 
 def check_pos(coord, bounds, pos):
     if pos == 'top':
