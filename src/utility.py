@@ -6,7 +6,7 @@ shot_list = [('↑ 挑球', 1, 5, False), ('↓ 高遠球', 5, 13, True), ('↑ 
 
 
 def shot_match(player_shot_list):
-
+    pass
 
 
 def type_classify(shot_list):
