@@ -4,14 +4,6 @@ import cv2
 from PIL import Image, ImageDraw, ImageFont
 from utility import zone, cal_move_direction
 
-score_0_d_list = [2,2,2,2,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,2,
-                  2,2,2,2,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,1,1,1,1,2,2,2,
-                  2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-
-score_1_d_list = [1,1,1,1,1,1,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,
-                  2,2,2,2,2,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-                  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,]
-
 
 def top_bottom(joint):
     a = joint[0][-1][1] + joint[0][-2][1]
@@ -85,7 +77,7 @@ def get_area(court_points, bounds):
     return all
 
 # [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
-def add_result(base, vid_path, shot_list, court_points):
+def add_result(base, vid_path, shot_list, move_dir_list, court_points):
     bounds = get_area_bound(court_points)
     cap = cv2.VideoCapture(vid_path)
     if not cap.isOpened():
@@ -103,7 +95,7 @@ def add_result(base, vid_path, shot_list, court_points):
         if ret:
             bound = shot_list[i][2]
             if bound >= count:
-                text = shot_list[i][0]
+                text = shot_list[i][0] + ' ' + move_dir_list[i][0]
                 cv2_im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 pil_im = Image.fromarray(cv2_im)
                 draw = ImageDraw.Draw(pil_im)
@@ -232,7 +224,6 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
     multi_points = np.array(multi_points)
     multi_points = np.reshape(multi_points, (7, 5, 2))
     bounds = get_area_bound(court_points)
-    first_coord = None
     shot_list = []
     move_dir_list = []
     got_first = False
@@ -242,19 +233,25 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
         if not got_first:
             if d == 1:
                 top, bot = top_bottom(joint_list[i])
-                first_x = (joint_list[i][top][-1][0] + joint_list[i][top][-2][0]) / 2
                 first_y = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
-                first_coord = np.array([first_x, first_y])
-                first_zone = zone(first_coord, multi_points)
+                first_x_bot = (joint_list[i][bot][-1][0] + joint_list[i][bot][-2][0]) / 2
+                first_y_bot = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
+                first_coord_bot = np.array([first_x_bot, first_y_bot])
+
+                first_zone = zone(first_coord_bot, multi_points)
+                print(first_coord_bot, first_zone)
                 first_i = i
                 got_first = True
                 last_d = 1
             elif d == 2:
                 top, bot = top_bottom(joint_list[i])
-                first_x = (joint_list[i][bot][-1][0] + joint_list[i][bot][-2][0]) / 2
-                first_y = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
-                first_coord = np.array([first_x, first_y])
-                first_zone = zone(first_coord, multi_points)
+                first_y = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
+                first_x_top = (joint_list[i][top][-1][0] + joint_list[i][top][-2][0]) / 2
+                first_y_top = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
+                first_coord_top = np.array([first_x_top, first_y_top])
+                first_zone = zone(first_coord_top, multi_points)
+                print(first_coord_top, first_zone)
+
                 first_i = i
                 got_first = True
                 last_d = 2
@@ -266,14 +263,21 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
             else:
                 change = False
             top, bot = top_bottom(joint_list[i])
-            second_x = (joint_list[i][bot][-1][0] + joint_list[i][bot][-2][0]) / 2
             second_y = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
-            second_coord = np.array([second_x, second_y])
-            second_zone = zone(second_coord, multi_points)
+            second_x_top = (joint_list[i][top][-1][0] + joint_list[i][top][-2][0]) / 2
+            second_y_top = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
+            second_x_bot = (joint_list[i][bot][-1][0] + joint_list[i][bot][-2][0]) / 2
+            second_y_bot = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
+            second_coord_fm = np.array([second_x_bot, second_y_bot])
+            second_zone = zone(second_coord_fm, multi_points)
+            print(second_coord_fm, second_zone)
             second_i = i
+
             shot = shot_recog(first_y, second_y, d, bounds)
             move_dir = cal_move_direction(first_zone[0], second_zone[0])
             move_dir_list.append((move_dir, False))  # True for top
+            first_coord_fm = np.array([second_x_top, second_y_top])
+            first_zone = zone(first_coord_fm, multi_points)
 
             shot_list.append((shot, first_i, second_i))
 
@@ -282,7 +286,6 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
             if change:
                 last_d = 0
             first_y = second_y
-
         if d != last_d and last_d == 2:
             if d == 0:
                 d = 1
@@ -290,15 +293,23 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
             else:
                 change = False
             top, bot = top_bottom(joint_list[i])
-            second_x = (joint_list[i][top][-1][0] + joint_list[i][top][-2][0]) / 2
             second_y = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
-            second_coord = np.array([first_y, second_y])
-            second_zone = zone(second_coord, multi_points)
+
+            second_x_top = (joint_list[i][top][-1][0] + joint_list[i][top][-2][0]) / 2
+            second_y_top = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
+            second_x_bot = (joint_list[i][bot][-1][0] + joint_list[i][bot][-2][0]) / 2
+            second_y_bot = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
+
+            second_coord_fm = np.array([second_x_top, second_y_top])
+            second_zone = zone(second_coord_fm, multi_points)
+            print(second_coord_fm, second_zone)
             second_i = i
 
-            shot = shot_recog(second_x, second_y, d, bounds)
+            shot = shot_recog(first_y, second_y, d, bounds)
             move_dir = cal_move_direction(first_zone[0], second_zone[0])
             move_dir_list.append((move_dir, True))
+            first_coord_fm = np.array([second_x_bot, second_y_bot])
+            first_zone = zone(first_coord_fm, multi_points)
 
             shot_list.append((shot, first_i, second_i))
             first_i = second_i

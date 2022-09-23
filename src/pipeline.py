@@ -290,7 +290,7 @@ class video_resolver:
                                         joint_img_list = []
                                         out.release()
 
-                                        save_path = f"{store_path}/score_{self.score}.json"
+                                        save_path = f"{store_path}/score_{self.score}_joint.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(framesDict, f, indent=2)
                                         self.joint_list = []
@@ -303,7 +303,20 @@ class video_resolver:
                                         print(shuttle_direction)
                                         shot_list, move_dir_list = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
                                         print(shot_list, move_dir_list)
-                                        success = shot_recog.add_result(f'{store_path}/', f"{store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, self.true_court_points)
+                                        success = shot_recog.add_result(f'{store_path}/', f"{store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, move_dir_list, self.true_court_points)
+                                        info_dict = {
+                                            'id':None,
+                                            'score':self.score-1,
+                                            'time':[start_time, end_time],
+                                            'shot list':shot_list,
+                                            'move direction list':move_dir_list,
+                                            'top player type':None,
+                                            'bot player type': None,
+                                            'winner':None
+                                        }
+                                        save_path = f"{store_path}/score_{self.score-1}_info.json"
+                                        with open(save_path, 'w') as f:
+                                            json.dump(info_dict, f, indent=2)
                                         if success:
                                             print(f'Finish score_{self.score}')
                                     else:
