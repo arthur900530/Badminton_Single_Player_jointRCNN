@@ -273,13 +273,13 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
             print(second_coord_fm, second_zone)
             second_i = i
 
-            shot = shot_recog(first_y, second_y, d, bounds)
+            shot, top_serve = shot_recog(first_y, second_y, d, bounds)
             move_dir = cal_move_direction(first_zone[0], second_zone[0])
             move_dir_list.append((move_dir, False))  # True for top
             first_coord_fm = np.array([second_x_top, second_y_top])
             first_zone = zone(first_coord_fm, multi_points)
 
-            shot_list.append((shot, first_i, second_i))
+            shot_list.append((shot, first_i, second_i, top_serve))
 
             first_i = second_i
             last_d = d
@@ -305,13 +305,13 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
             print(second_coord_fm, second_zone)
             second_i = i
 
-            shot = shot_recog(first_y, second_y, d, bounds)
+            shot, top_serve = shot_recog(first_y, second_y, d, bounds)
             move_dir = cal_move_direction(first_zone[0], second_zone[0])
             move_dir_list.append((move_dir, True))
             first_coord_fm = np.array([second_x_bot, second_y_bot])
             first_zone = zone(first_coord_fm, multi_points)
 
-            shot_list.append((shot, first_i, second_i))
+            shot_list.append((shot, first_i, second_i, top_serve))
             first_i = second_i
             last_d = d
             if change:
@@ -368,49 +368,49 @@ def shot_recog(first_coord, second_coord, d, bounds):
         pos_bot = check_pos(second_coord, bounds, 'bot')
         serve = 'top'
     print(pos_top, pos_bot, serve)
-    shot = check_shot(pos_top, pos_bot, serve)
-    return shot
+    shot, top_serve = check_shot(pos_top, pos_bot, serve)
+    return shot, top_serve
 
 
 def check_shot(pos_top, pos_bot, serve):
     if serve == 'top':
         if pos_top == 'front' and pos_bot == 'front':
-            return '↓ 短球'
+            return '↓ 短球', True                     #True stands for top player's
         if pos_top == 'front' and pos_bot == 'mid':
-            return '↓ 撲球'
+            return '↓ 撲球', True
         if pos_top == 'front' and pos_bot == 'back':
-            return '↓ 挑球'
+            return '↓ 挑球', True
         if pos_top == 'mid' and pos_bot == 'front':
-            return '↓ 短球'
+            return '↓ 短球', True
         if pos_top == 'mid' and pos_bot == 'mid':
-            return '↓ 平球'
+            return '↓ 平球', True
         if pos_top == 'mid' and pos_bot == 'back':
-            return '↓ 挑球'
+            return '↓ 挑球', True
         if pos_top == 'back' and pos_bot == 'front':
-            return '↓ 切球'
+            return '↓ 切球', True
         if pos_top == 'back' and pos_bot == 'mid':
-            return '↓ 殺球'
+            return '↓ 殺球', True
         if pos_top == 'back' and pos_bot == 'back':
-            return '↓ 高遠球'
+            return '↓ 高遠球', True
     if serve == 'bot':
         if pos_top == 'front' and pos_bot == 'front':
-            return '↑ 短球'
+            return '↑ 短球', False
         if pos_top == 'front' and pos_bot == 'mid':
-            return '↑ 短球'
+            return '↑ 短球', False
         if pos_top == 'front' and pos_bot == 'back':
-            return '↑ 切球'
+            return '↑ 切球', False
         if pos_top == 'mid' and pos_bot == 'front':
-            return '↑ 撲球'
+            return '↑ 撲球', False
         if pos_top == 'mid' and pos_bot == 'mid':
-            return '↑ 平球'
+            return '↑ 平球', False
         if pos_top == 'mid' and pos_bot == 'back':
-            return '↑ 殺球'
+            return '↑ 殺球', False
         if pos_top == 'back' and pos_bot == 'front':
-            return '↑ 挑球'
+            return '↑ 挑球', False
         if pos_top == 'back' and pos_bot == 'mid':
-            return '↑ 挑球'
+            return '↑ 挑球', False
         if pos_top == 'back' and pos_bot == 'back':
-            return '↑ 高遠球'
+            return '↑ 高遠球', False
 
 
 def get_data(path):

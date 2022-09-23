@@ -2,6 +2,27 @@ import os
 import numpy as np
 
 
+shot_list = [('↑ 挑球', 1, 5, False), ('↓ 高遠球', 5, 13, True), ('↑ 高遠球', 13, 19, False), ('↓ 高遠球', 19, 30, True), ('↑ 高遠球', 30, 37, False), ('↓ 切球', 37, 43, True), ('↑ 挑球', 43, 53, False), ('↓ 殺球', 53, 58, True)]
+
+
+def shot_match(player_shot_list):
+
+
+
+def type_classify(shot_list):
+    top_shots = []
+    bot_shots = []
+    for shot in shot_list:
+        if shot[2]:
+            top_shots.append(shot[0])
+        else:
+            bot_shots.append(shot[0])
+
+    top_type = shot_match(top_shots)
+    bot_type = shot_match(bot_shots)
+
+    return top_type, bot_type
+
 def cal_move_direction(c1, c2):
     c1 = np.array(c1)
     c2 = np.array(c2)
