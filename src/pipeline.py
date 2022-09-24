@@ -44,7 +44,6 @@ class video_resolver:
 
         self.frame_width = int(self.cap.get(3))
         self.frame_height = int(self.cap.get(4))
-        self.save_path = f"{self.base}/outputs/videos/{self.vid_name}/{self.vid_name}.mp4"
         self.frame_count = 1
         self.saved_count = 0
         self.time_rate = 0.1
@@ -283,11 +282,11 @@ class video_resolver:
                                             self.start_recording = True
                                             self.end_frame = self.frame_count
                                         framesDict = {'frames': self.joint_list}
-                                        store_path = f"{self.base}/outputs/{self.vid_name}/score_{self.score}"
+                                        store_path = f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score}"
                                         check_dir(store_path)
                                         start_time = parse_time(self.FPS, self.start_frame)
                                         end_time = parse_time(self.FPS, self.end_frame)
-                                        out = cv2.VideoWriter(f"{store_path}/score_{self.score}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
+                                        out = cv2.VideoWriter(f"{store_path}/game_{self.game}_score_{self.score}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
                                                               int(self.FPS / self.frame_rate), (self.frame_width, self.frame_height))
                                         for img in joint_img_list:
                                             out.write(img)
@@ -305,7 +304,7 @@ class video_resolver:
                                         shot_list, move_dir_list = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
                                         print(shot_list, move_dir_list)
                                         offensive, pos = type_classify(shot_list)
-                                        success = shot_recog.add_result(f'{store_path}/', f"{store_path}/score_{self.score}.mp4", shot_list, move_dir_list, self.true_court_points)
+                                        success = shot_recog.add_result(f'{store_path}/', f"{store_path}/game_{self.game}_score_{self.score}.mp4", shot_list, move_dir_list, self.true_court_points)
                                         if offensive is None:
                                             top_type = None
                                             bot_type = None
@@ -328,11 +327,17 @@ class video_resolver:
                                             'bot player type': bot_type,
                                             'winner':None
                                         }
-                                        save_path = f"{store_path}/score_{self.score}_info.json"
+                                        save_path = f"{store_path}/game_{self.game}_score_{self.score}_info.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(info_dict, f, indent=2)
                                         if success:
                                             print(f'Finish score_{self.score}')
+                                        if self.score != 0:
+                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json", 'r') as score_json:
+                                                dict = json.load(score_json)
+                                            dict['winner'] = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score - 1}/game_{self.game}_score_{self.score - 1}_info.json", 'w') as f:
+                                                json.dump(dict, f, indent=2)
 
                                         self.joint_list = []
                                         self.score += 1
@@ -374,7 +379,9 @@ class video_resolver:
                             self.zero_count += 1
 
                         if self.zero_count > 1100 and self.game < 3:
+                            self.zero_count = 0
                             self.game += 1
+                            self.score = 0
 
                         self.saved_count += 1
                         print(self.saved_count, ' / ', self.total_saved_count)
