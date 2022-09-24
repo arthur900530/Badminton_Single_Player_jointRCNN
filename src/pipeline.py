@@ -61,6 +61,9 @@ class video_resolver:
         self.wait_list = []
         self.last_type = 0
         self.checkpoint = False
+
+        self.game = 0
+        self.zero_count = 0
         self.score = 0
         self.one_count = 0
 
@@ -247,6 +250,7 @@ class video_resolver:
 
     def resolve(self):
         joint_img_list = []
+
         while self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
@@ -314,6 +318,7 @@ class video_resolver:
 
                                         info_dict = {
                                             'id':None,
+                                            'game':self.game,
                                             'score':self.score,
                                             'time':[start_time, end_time],
                                             'long rally':True if len(shot_list) > 15 else False,
@@ -363,15 +368,13 @@ class video_resolver:
                                 self.joint_list.append({
                                     'joint': player_joints,
                                 })
-
-                            # add features
-                            # for kps in [self.court_points]:
-                            #     for idx, kp in enumerate(kps):
-                            #         cv2.circle(output_image, tuple(kp), 5, (255, 255, 0), 10)
-                            # text = f"Frame count: {self.saved_count}, Court: True, Checkpoint: {self.checkpoint}, Score: {self.score}"
-                            # cv2.putText(output_image, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1,
-                            #             cv2.LINE_AA)
                             joint_img_list.append(output_image)
+                            self.zero_count = 0
+                        else:
+                            self.zero_count += 1
+
+                        if self.zero_count > 1100 and self.game < 3:
+                            self.game += 1
 
                         self.saved_count += 1
                         print(self.saved_count, ' / ', self.total_saved_count)
