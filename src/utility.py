@@ -2,26 +2,56 @@ import os
 import numpy as np
 
 
-shot_list = [('↑ 挑球', 1, 5, False), ('↓ 高遠球', 5, 13, True), ('↑ 高遠球', 13, 19, False), ('↓ 高遠球', 19, 30, True), ('↑ 高遠球', 30, 37, False), ('↓ 切球', 37, 43, True), ('↑ 挑球', 43, 53, False), ('↓ 殺球', 53, 58, True)]
+# shot_list = [('↑ 挑球', 1, 5, False), ('↓ 長球', 5, 13, True), ('↑ 長球', 13, 19, False), ('↓ 長球', 19, 30, True), ('↑ 長球', 30, 37, False), ('↓ 切球', 37, 43, True), ('↑ 挑球', 43, 53, False), ('↓ 殺球', 53, 58, True)]
 
-
-def shot_match(player_shot_list):
-    pass
-
+def shot_match(player_shot_list, top):
+    # offense_rally = [
+    #     [3, 4, 1],
+    #     [3, 4, 2],
+    #     [2, 4, 1],
+    #     [2, 4, 2],
+    #     [1, 4, 1],
+    #     [1, 4, 2],
+    #     [0, 0, 1],
+    #     [0, 0, 2],
+    #     [5, 4, 1],
+    #     [5, 4, 2]
+    # ]
+    offense_rally = ['341','342','241','242','141','142','001','002','541','542']
+    if len(player_shot_list) < 4:
+        return None, None
+    trim_shots = ''.join(player_shot_list[-4:])
+    for pattern in offense_rally:
+        if pattern in trim_shots:
+            index = trim_shots.index(pattern) + 2
+            if index == 3 and top:
+                return True, True                 # offensive, top
+            elif index == 3 and not top:
+                return True, False
+            elif index == 2 and top:
+                return True, False
+            elif index == 2 and not top:
+                return True, True
+    return False, None
 
 def type_classify(shot_list):
-    top_shots = []
-    bot_shots = []
+    shot_dict = {
+        '長球':'0',
+        '殺球':'1',
+        '切球':'2',
+        '小球':'3',
+        '挑球':'4',
+        '平球':'5',
+        '撲球':'6'
+    }
+    shots = []
     for shot in shot_list:
-        if shot[2]:
-            top_shots.append(shot[0])
-        else:
-            bot_shots.append(shot[0])
+        shots.append(shot_dict[shot[0].split(' ')[-1]])
+    type, pos = shot_match(shots, shot_list[-1][3])
 
-    top_type = shot_match(top_shots)
-    bot_type = shot_match(bot_shots)
+    return type, pos
 
-    return top_type, bot_type
+# print(type_classify(shot_list))
 
 def cal_move_direction(c1, c2):
     c1 = np.array(c1)
@@ -273,7 +303,7 @@ def parse_time(FPS, frame_count):
     if shr < 10:
         shr = '0' + str(shr)
 
-    return f'{shr}-{smin}-{ssec}'
+    return f'{shr}:{smin}:{ssec}'
 
 
 def get_area_bound(court_points):

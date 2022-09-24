@@ -15,13 +15,7 @@ def top_bottom(joint):
         top = 0
         bottom = 1
     return top, bottom
-# [[[100  50]]
-#
-#  [[200 300]]
-#
-#  [[700 200]]
-#
-#  [[500 100]]]
+
 
 def get_area(court_points, bounds):
     l_a = (court_points[0][1] - court_points[4][1]) / (
@@ -76,9 +70,9 @@ def get_area(court_points, bounds):
     all.append((bot_b, (0, 255, 255)))
     return all
 
+
 # [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
 def add_result(base, vid_path, shot_list, move_dir_list, court_points):
-    bounds = get_area_bound(court_points)
     cap = cv2.VideoCapture(vid_path)
     if not cap.isOpened():
         print('Error while trying to read video. Please check path again')
@@ -102,8 +96,6 @@ def add_result(base, vid_path, shot_list, move_dir_list, court_points):
                 font = ImageFont.truetype("../font/msjh.ttc", 50, encoding="utf-8")
                 draw.text((900, 50), text, (255, 255, 255), font=font)
                 cv2_text_im = cv2.cvtColor(np.array(pil_im), cv2.COLOR_RGB2BGR)
-                # cv2.putText(frame, text, (700, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1,
-                            # cv2.LINE_AA)
                 out.write(cv2_text_im)
                 count += 1
             elif count > bound and i < imax - 1:
@@ -124,6 +116,7 @@ def add_result(base, vid_path, shot_list, move_dir_list, court_points):
         else:
             break
     return True
+
 
 def get_pos_percentage(joint_list, bounds):
     top_front = 0
@@ -157,66 +150,6 @@ def get_pos_percentage(joint_list, bounds):
         'bot': [bot_front / all, bot_mid / all, bot_back / all]
     }
     return result
-
-# def check_hit_frame(direction_list, joint_list, court_points):
-#     joint_list = joint_list.squeeze(0).cpu().numpy()  # seq len, 2, 12, 2
-#     bounds = get_area_bound(court_points)
-#     shot_list = []
-#     got_first = False
-#     last_d = 0
-#     for i in range(len(direction_list)):
-#         d = direction_list[i]
-#         if not got_first:
-#             if d == 1:
-#                 top, bot = top_bottom(joint_list[i])
-#                 first_y = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
-#                 first_i = i
-#                 got_first = True
-#                 last_d = 1
-#             elif d == 2:
-#                 top, bot = top_bottom(joint_list[i])
-#                 first_y = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
-#                 first_i = i
-#                 got_first = True
-#                 last_d = 2
-#             continue
-#         if d != last_d and last_d == 1:
-#             if d == 0:
-#                 d = 2
-#                 change = True
-#             else:
-#                 change = False
-#             top, bot = top_bottom(joint_list[i])
-#             second_y = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
-#             second_i = i
-#             shot = shot_recog(first_y, second_y, d, bounds)
-#             shot_list.append((shot, first_i, second_i))
-#
-#             first_i = second_i
-#             last_d = d
-#             if change:
-#                 last_d = 0
-#             first_y = second_y
-#
-#         if d != last_d and last_d == 2:
-#             if d == 0:
-#                 d = 1
-#                 change = True
-#             else:
-#                 change = False
-#             top, bot = top_bottom(joint_list[i])
-#             second_y = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
-#             second_i = i
-#
-#             shot = shot_recog(first_y, second_y, d, bounds)
-#
-#             shot_list.append((shot, first_i, second_i))
-#             first_i = second_i
-#             last_d = d
-#             if change:
-#                 last_d = 0
-#             first_y = second_y
-#     return shot_list
 
 
 def check_hit_frame(direction_list, joint_list, court_points, multi_points):
@@ -375,13 +308,13 @@ def shot_recog(first_coord, second_coord, d, bounds):
 def check_shot(pos_top, pos_bot, serve):
     if serve == 'top':
         if pos_top == 'front' and pos_bot == 'front':
-            return '↓ 短球', True                     #True stands for top player's
+            return '↓ 小球', True                     #True stands for top player's
         if pos_top == 'front' and pos_bot == 'mid':
             return '↓ 撲球', True
         if pos_top == 'front' and pos_bot == 'back':
             return '↓ 挑球', True
         if pos_top == 'mid' and pos_bot == 'front':
-            return '↓ 短球', True
+            return '↓ 小球', True
         if pos_top == 'mid' and pos_bot == 'mid':
             return '↓ 平球', True
         if pos_top == 'mid' and pos_bot == 'back':
@@ -391,12 +324,12 @@ def check_shot(pos_top, pos_bot, serve):
         if pos_top == 'back' and pos_bot == 'mid':
             return '↓ 殺球', True
         if pos_top == 'back' and pos_bot == 'back':
-            return '↓ 高遠球', True
+            return '↓ 長球', True
     if serve == 'bot':
         if pos_top == 'front' and pos_bot == 'front':
-            return '↑ 短球', False
+            return '↑ 小球', False
         if pos_top == 'front' and pos_bot == 'mid':
-            return '↑ 短球', False
+            return '↑ 小球', False
         if pos_top == 'front' and pos_bot == 'back':
             return '↑ 切球', False
         if pos_top == 'mid' and pos_bot == 'front':
@@ -410,7 +343,7 @@ def check_shot(pos_top, pos_bot, serve):
         if pos_top == 'back' and pos_bot == 'mid':
             return '↑ 挑球', False
         if pos_top == 'back' and pos_bot == 'back':
-            return '↑ 高遠球', False
+            return '↑ 長球', False
 
 
 def get_data(path):

@@ -8,7 +8,7 @@ import scene_utils, transformer_utils
 import shot_recog
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
-from utility import check_dir, get_path, parse_time, top_bottom, get_area_bound, cal_dis, correction, extension
+from utility import check_dir, get_path, parse_time, top_bottom, get_area_bound, cal_dis, correction, extension, type_classify
 
 
 class video_resolver:
@@ -283,7 +283,7 @@ class video_resolver:
                                         check_dir(store_path)
                                         start_time = parse_time(self.FPS, self.start_frame)
                                         end_time = parse_time(self.FPS, self.end_frame)
-                                        out = cv2.VideoWriter(f"{store_path}/score_{self.score}_{start_time}_{end_time}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
+                                        out = cv2.VideoWriter(f"{store_path}/score_{self.score}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
                                                               int(self.FPS / self.frame_rate), (self.frame_width, self.frame_height))
                                         for img in joint_img_list:
                                             out.write(img)
@@ -293,9 +293,6 @@ class video_resolver:
                                         save_path = f"{store_path}/score_{self.score}_joint.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(framesDict, f, indent=2)
-                                        self.joint_list = []
-                                        self.score += 1
-                                        self.one_count = 0
 
                                         joint_list = torch.tensor(np.array(transformer_utils.get_data(save_path)), dtype=torch.float32).to(self.device)
                                         orig_joint_list = torch.tensor(np.array(transformer_utils.get_original_data(save_path)), dtype=torch.float32).to(self.device)
@@ -303,22 +300,38 @@ class video_resolver:
                                         print(shuttle_direction)
                                         shot_list, move_dir_list = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
                                         print(shot_list, move_dir_list)
-                                        success = shot_recog.add_result(f'{store_path}/', f"{store_path}/score_{self.score-1}_{start_time}_{end_time}.mp4", shot_list, move_dir_list, self.true_court_points)
+                                        offensive, pos = type_classify(shot_list)
+                                        success = shot_recog.add_result(f'{store_path}/', f"{store_path}/score_{self.score}.mp4", shot_list, move_dir_list, self.true_court_points)
+                                        if offensive is None:
+                                            top_type = None
+                                            bot_type = None
+                                        elif offensive:
+                                            top_type = True if pos else False
+                                            bot_type = True if not pos else False
+                                        elif not offensive:
+                                            top_type = False
+                                            bot_type = False
+
                                         info_dict = {
                                             'id':None,
-                                            'score':self.score-1,
+                                            'score':self.score,
                                             'time':[start_time, end_time],
+                                            'long rally':True if len(shot_list) > 15 else False,
                                             'shot list':shot_list,
                                             'move direction list':move_dir_list,
-                                            'top player type':None,
-                                            'bot player type': None,
+                                            'top player type':top_type,
+                                            'bot player type': bot_type,
                                             'winner':None
                                         }
-                                        save_path = f"{store_path}/score_{self.score-1}_info.json"
+                                        save_path = f"{store_path}/score_{self.score}_info.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(info_dict, f, indent=2)
                                         if success:
                                             print(f'Finish score_{self.score}')
+
+                                        self.joint_list = []
+                                        self.score += 1
+                                        self.one_count = 0
                                     else:
                                         self.joint_list = []
                                         self.one_count = 0
