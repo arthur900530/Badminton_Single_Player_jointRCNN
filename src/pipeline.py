@@ -61,9 +61,11 @@ class video_resolver:
         self.last_type = 0
         self.checkpoint = False
 
-        self.game = 0
+        self.game = 1
         self.zero_count = 0
         self.score = 0
+        self.last_score = 0
+        self.top_bot_score = [0, 0]
         self.one_count = 0
 
     def get_court_info(self, img):
@@ -325,19 +327,44 @@ class video_resolver:
                                             'move direction list':move_dir_list,
                                             'top player type':top_type,
                                             'bot player type': bot_type,
-                                            'winner':None
+                                            'winner':None,
+                                            'top bot score':self.top_bot_score
                                         }
                                         save_path = f"{store_path}/game_{self.game}_score_{self.score}_info.json"
                                         with open(save_path, 'w') as f:
                                             json.dump(info_dict, f, indent=2)
                                         if success:
                                             print(f'Finish score_{self.score}')
+
                                         if self.score != 0:
                                             with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json", 'r') as score_json:
                                                 dict = json.load(score_json)
-                                            dict['winner'] = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                            winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                            dict['winner'] = winner
+                                            if winner:
+                                                dict['top bot score'][0] += 1
+                                                self.top_bot_score[0] += 1
+                                            else:
+                                                dict['top bot score'][1] += 1
+                                                self.top_bot_score[1] += 1
                                             with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score - 1}/game_{self.game}_score_{self.score - 1}_info.json", 'w') as f:
                                                 json.dump(dict, f, indent=2)
+
+                                        if self.score == 0 and self.game != 1:
+                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game-1}_score_{self.score-1}/game_{self.game}_score_{self.last_score}_info.json", 'r') as score_json:
+                                                dict = json.load(score_json)
+                                            winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                            dict['winner'] = winner
+                                            if winner:
+                                                dict['top bot score'][0] += 1
+                                                self.top_bot_score[0] += 1
+                                            else:
+                                                dict['top bot score'][1] += 1
+                                                self.top_bot_score[1] += 1
+                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score - 1}/game_{self.game}_score_{self.score - 1}_info.json", 'w') as f:
+                                                json.dump(dict, f, indent=2)
+                                        print(self.top_bot_score)
+
 
                                         self.joint_list = []
                                         self.score += 1
@@ -379,7 +406,9 @@ class video_resolver:
                             self.zero_count += 1
 
                         if self.zero_count > 1100 and self.game < 3:
+                            self.last_score = self.score
                             self.zero_count = 0
+                            self.top_bot_score = [0, 0]
                             self.game += 1
                             self.score = 0
 
@@ -390,6 +419,18 @@ class video_resolver:
                     self.frame_count += 1
             else:
                 break
+
+        with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json", 'r') as score_json:
+            dict = json.load(score_json)
+        dict['winner'] = True if self.top_bot_score[0] > self.top_bot_score[1] else False
+        if dict['winner']:
+            self.top_bot_score[0] += 1
+            dict['top bot score'] = self.top_bot_score
+        else:
+            self.top_bot_score[1] += 1
+            dict['top bot score'] = self.top_bot_score
+        with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json",'w') as f:
+            json.dump(dict, f, indent=2)
 
         self.cap.release()
         cv2.destroyAllWindows()
