@@ -279,7 +279,7 @@ class video_resolver:
                             else:
                                 self.checkpoint = True
                                 if p == 0:
-                                    if len(self.joint_list) / self.one_count > 0.6 and self.one_count > 25:
+                                    if len(self.joint_list) / self.one_count > 0.6 and self.one_count > 25:  # 25 is changable
                                         if not self.start_recording:
                                             self.start_recording = True
                                             self.end_frame = self.frame_count
@@ -300,9 +300,12 @@ class video_resolver:
                                             json.dump(framesDict, f, indent=2)
 
                                         joint_list = torch.tensor(np.array(transformer_utils.get_data(save_path)), dtype=torch.float32).to(self.device)
-                                        orig_joint_list = torch.tensor(np.array(transformer_utils.get_original_data(save_path)), dtype=torch.float32).to(self.device)
+                                        orig_joint_list = np.squeeze(np.array(transformer_utils.get_original_data(save_path)), axis=0)
+                                        print(orig_joint_list.shape, type(orig_joint_list))
                                         shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
                                         print(shuttle_direction)
+                                        correct = transformer_utils.check_pos_and_score(shuttle_direction, orig_joint_list, self.multi_points, self.top_bot_score)
+                                        print('Score correct...') if correct else print('Wrong score...')
                                         shot_list, move_dir_list = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
                                         print(shot_list, move_dir_list)
                                         offensive, pos = type_classify(shot_list)

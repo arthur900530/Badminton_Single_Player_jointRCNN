@@ -153,7 +153,7 @@ def get_pos_percentage(joint_list, bounds):
 
 
 def check_hit_frame(direction_list, joint_list, court_points, multi_points):
-    joint_list = joint_list.squeeze(0).cpu().numpy()  # seq len, 2, 12, 2
+    # joint_list seq len, 2, 12, 2
     multi_points = np.array(multi_points)
     multi_points = np.reshape(multi_points, (7, 5, 2))
     bounds = get_area_bound(court_points)

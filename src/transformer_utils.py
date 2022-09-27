@@ -29,6 +29,41 @@ def top_bottom(joint):
     return top, bottom
 
 
+def right_area(joint, player, multi_point, first_d):
+    a = joint[player][15][0] + joint[player][16][0]
+    b = multi_point[2][0] + multi_point[17][0]
+    if first_d == 1:
+        return True if a < b else False
+    else:
+        return True if a > b else False
+
+
+def check_pos_and_score(d_list, joint_list, mp, top_bot_score):
+    if d_list.index(1) < d_list.index(2):
+        first_d = 1
+        index = d_list.index(1)
+    else:
+        first_d = 2
+        index = d_list.index(2)
+
+    top, bot = top_bottom(joint_list[index])
+    player = top if first_d == 1 else bot
+    pi = 0 if first_d == 1 else 1
+    right = right_area(joint_list[index], player, mp, first_d)
+    if right:
+        if top_bot_score[pi] % 2 == 0:
+            return True, top_bot_score
+        else:
+            top_bot_score[pi] += 1
+            return False, top_bot_score
+    else:
+        if top_bot_score[pi] % 2 == 1:
+            return True, top_bot_score
+        else:
+            top_bot_score[pi] += 1
+            return False, top_bot_score
+
+
 def get_original_data(path):
     data_x = []
 
