@@ -28,6 +28,9 @@ class video_resolver:
         self.court_kp_model = torch.load('model_weights/court_kpRCNN.pth')
         self.court_kp_model.to(self.device).eval()
 
+        self.court_kp_model_old = torch.load('model_weights/court_kpRCNN_old.pth')
+        self.court_kp_model_old.to(self.device).eval()
+
         self.paths = [f"{self.base}/outputs",
                       f"{self.base}/outputs/{self.vid_name}"]
 
@@ -74,6 +77,7 @@ class video_resolver:
             img = img.unsqueeze(0)
             img = img.to(self.device)
             output = self.court_kp_model(img)
+            output_old = self.court_kp_model_old(img)
         scores = output[0]['scores'].detach().cpu().numpy()
         high_scores_idxs = np.where(scores > 0.7)[0].tolist()
         post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs],
@@ -81,20 +85,29 @@ class video_resolver:
         keypoints = []
         for kps in output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             keypoints.append([list(map(int, kp[:2])) for kp in kps])
+        scores_old = output_old[0]['scores'].detach().cpu().numpy()
+        high_scores_idxs_old = np.where(scores_old > 0.7)[0].tolist()
+        post_nms_idxs_old = torchvision.ops.nms(output_old[0]['boxes'][high_scores_idxs_old],
+                                            output_old[0]['scores'][high_scores_idxs_old], 0.3).cpu().numpy()
+        keypoints_old = []
+        for kps in output_old[0]['keypoints'][high_scores_idxs_old][post_nms_idxs_old].detach().cpu().numpy():
+            keypoints_old.append([list(map(int, kp[:2])) for kp in kps])
+
         self.true_court_points = copy.deepcopy(keypoints[0])
         self.multi_points = extension(correction(np.array(keypoints[0]))).tolist()
         print(self.multi_points)
-        keypoints[0][0][0] -= 80
-        keypoints[0][0][1] -= 80
-        keypoints[0][1][0] += 80
-        keypoints[0][1][1] -= 80
-        keypoints[0][2][0] -= 80
-        keypoints[0][3][0] += 80
-        keypoints[0][4][0] -= 80
-        keypoints[0][4][1] = min(keypoints[0][4][1] + 80, self.frame_height - 40)
-        keypoints[0][5][0] += 80
-        keypoints[0][5][1] = min(keypoints[0][5][1] + 80, self.frame_height - 40)
-        self.court_points = keypoints[0]
+        keypoints_old[0][0][0] -= 80
+        keypoints_old[0][0][1] -= 80
+        keypoints_old[0][1][0] += 80
+        keypoints_old[0][1][1] -= 80
+        keypoints_old[0][2][0] -= 80
+        keypoints_old[0][3][0] += 80
+        keypoints_old[0][4][0] -= 80
+        keypoints_old[0][4][1] = min(keypoints_old[0][4][1] + 80, self.frame_height - 40)
+        keypoints_old[0][5][0] += 80
+        keypoints_old[0][5][1] = min(keypoints_old[0][5][1] + 80, self.frame_height - 40)
+        self.court_points = keypoints_old[0]
+
         l_a = (self.true_court_points[0][1] - self.true_court_points[4][1]) / (
                     self.true_court_points[0][0] - self.true_court_points[4][0])
         l_b = self.true_court_points[0][1] - l_a * self.true_court_points[0][0]
@@ -301,9 +314,16 @@ class video_resolver:
 
                                         joint_list = torch.tensor(np.array(transformer_utils.get_data(save_path)), dtype=torch.float32).to(self.device)
                                         orig_joint_list = np.squeeze(np.array(transformer_utils.get_original_data(save_path)), axis=0)
-                                        print(orig_joint_list.shape, type(orig_joint_list))
+
                                         shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
                                         print(shuttle_direction)
+                                        dz_count = 0
+                                        for d in shuttle_direction:
+                                            if d == 0:
+                                                dz_count += 1
+                                        if dz_count/len(shuttle_direction) > 0.9:
+                                            self.last_type = p
+                                            break
                                         correct = transformer_utils.check_pos_and_score(shuttle_direction, orig_joint_list, self.multi_points, self.top_bot_score)
                                         print('Score correct...') if correct else print('Wrong score...')
                                         shot_list, move_dir_list = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
@@ -366,8 +386,13 @@ class video_resolver:
                                                 self.top_bot_score[1] += 1
                                             with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score - 1}/game_{self.game}_score_{self.score - 1}_info.json", 'w') as f:
                                                 json.dump(dict, f, indent=2)
-                                        print(self.top_bot_score)
-
+                                        # if self.game == 3:
+                                        #     half = False
+                                        #     for sc in self.top_bot_score:
+                                        #         if sc == 11:
+                                        #             half = True
+                                        #     if half:
+                                        #         temp = self.top_bot_score
 
                                         self.joint_list = []
                                         self.score += 1
@@ -456,5 +481,12 @@ class video_resolver:
             })
         return True
 
-vpr = video_resolver('E:/test_videos/p_test.mp4', output_base='E:/test_videos')    # output base is where "outputs" dir is
-vpr.resolve()
+paths = get_path('E:/test_videos')
+vid_paths = []
+for path in paths:
+    if path.split('/')[-1].split('.')[-1] == 'mp4':
+        vid_paths.append(path)
+for vid_path in vid_paths:
+    vpr = video_resolver(vid_path, output_base='E:/test_videos')    # output base is where "outputs" dir is
+    vpr.resolve()
+

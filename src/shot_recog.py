@@ -156,7 +156,7 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
     # joint_list seq len, 2, 12, 2
     multi_points = np.array(multi_points)
     multi_points = np.reshape(multi_points, (7, 5, 2))
-    bounds = get_area_bound(court_points)
+    bounds = get_area_bound(court_points)             #前中後場
     shot_list = []
     move_dir_list = []
     got_first = False
