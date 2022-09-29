@@ -41,10 +41,10 @@ def right_area(joint, player, multi_point, first_d):
 def check_pos_and_score(d_list, joint_list, mp, top_bot_score):
     if d_list.index(1) < d_list.index(2):
         first_d = 1
-        index = d_list.index(1)
+        index = d_list.index(1) - 3
     else:
         first_d = 2
-        index = d_list.index(2)
+        index = d_list.index(2) - 3
 
     top, bot = top_bottom(joint_list[index])
     player = top if first_d == 1 else bot

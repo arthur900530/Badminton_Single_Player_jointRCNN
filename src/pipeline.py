@@ -321,82 +321,81 @@ class video_resolver:
                                         for d in shuttle_direction:
                                             if d == 0:
                                                 dz_count += 1
-                                        if dz_count/len(shuttle_direction) > 0.9:
-                                            self.last_type = p
-                                            break
-                                        correct = transformer_utils.check_pos_and_score(shuttle_direction, orig_joint_list, self.multi_points, self.top_bot_score)
-                                        print('Score correct...') if correct else print('Wrong score...')
-                                        shot_list, move_dir_list = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
-                                        print(shot_list, move_dir_list)
-                                        offensive, pos = type_classify(shot_list)
-                                        success = shot_recog.add_result(f'{store_path}/', f"{store_path}/game_{self.game}_score_{self.score}.mp4", shot_list, move_dir_list, self.true_court_points)
-                                        if offensive is None:
-                                            top_type = None
-                                            bot_type = None
-                                        elif offensive:
-                                            top_type = True if pos else False
-                                            bot_type = True if not pos else False
-                                        elif not offensive:
-                                            top_type = False
-                                            bot_type = False
+                                        if dz_count/len(shuttle_direction) < 0.9:
+                                            # correct = transformer_utils.check_pos_and_score(shuttle_direction, orig_joint_list, self.multi_points, self.top_bot_score)
+                                            # print('Score correct...') if correct else print('Wrong score...')
+                                            shot_list, move_dir_list = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
+                                            print(shot_list, move_dir_list)
+                                            offensive, pos = type_classify(shot_list)
+                                            success = shot_recog.add_result(f'{store_path}/', f"{store_path}/game_{self.game}_score_{self.score}.mp4", shot_list, move_dir_list, self.true_court_points)
+                                            if offensive is None:
+                                                top_type = None
+                                                bot_type = None
+                                            elif offensive:
+                                                top_type = True if pos else False
+                                                bot_type = True if not pos else False
+                                            elif not offensive:
+                                                top_type = False
+                                                bot_type = False
 
-                                        info_dict = {
-                                            'id':None,
-                                            'game':self.game,
-                                            'score':self.score,
-                                            'time':[start_time, end_time],
-                                            'long rally':True if len(shot_list) > 15 else False,
-                                            'shot list':shot_list,
-                                            'move direction list':move_dir_list,
-                                            'top player type':top_type,
-                                            'bot player type': bot_type,
-                                            'winner':None,
-                                            'top bot score':self.top_bot_score
-                                        }
-                                        save_path = f"{store_path}/game_{self.game}_score_{self.score}_info.json"
-                                        with open(save_path, 'w') as f:
-                                            json.dump(info_dict, f, indent=2)
-                                        if success:
-                                            print(f'Finish score_{self.score}')
+                                            info_dict = {
+                                                'id':None,
+                                                'game':self.game,
+                                                'score':self.score,
+                                                'time':[start_time, end_time],
+                                                'long rally':True if len(shot_list) > 15 else False,
+                                                'shuttle direction':shuttle_direction,
+                                                'shot list':shot_list,
+                                                'move direction list':move_dir_list,
+                                                'top player type':top_type,
+                                                'bot player type': bot_type,
+                                                'winner':None,
+                                                'top bot score':self.top_bot_score
+                                            }
+                                            save_path = f"{store_path}/game_{self.game}_score_{self.score}_info.json"
+                                            with open(save_path, 'w') as f:
+                                                json.dump(info_dict, f, indent=2)
+                                            if success:
+                                                print(f'Finish score_{self.score}')
 
-                                        if self.score != 0:
-                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json", 'r') as score_json:
-                                                dict = json.load(score_json)
-                                            winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
-                                            dict['winner'] = winner
-                                            if winner:
-                                                dict['top bot score'][0] += 1
-                                                self.top_bot_score[0] += 1
-                                            else:
-                                                dict['top bot score'][1] += 1
-                                                self.top_bot_score[1] += 1
-                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score - 1}/game_{self.game}_score_{self.score - 1}_info.json", 'w') as f:
-                                                json.dump(dict, f, indent=2)
+                                            if self.score != 0:
+                                                with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json", 'r') as score_json:
+                                                    dict = json.load(score_json)
+                                                winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                                dict['winner'] = winner
+                                                if winner:
+                                                    dict['top bot score'][0] += 1
+                                                    self.top_bot_score[0] += 1
+                                                else:
+                                                    dict['top bot score'][1] += 1
+                                                    self.top_bot_score[1] += 1
+                                                with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score - 1}/game_{self.game}_score_{self.score - 1}_info.json", 'w') as f:
+                                                    json.dump(dict, f, indent=2)
 
-                                        if self.score == 0 and self.game != 1:
-                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game-1}_score_{self.score-1}/game_{self.game}_score_{self.last_score}_info.json", 'r') as score_json:
-                                                dict = json.load(score_json)
-                                            winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
-                                            dict['winner'] = winner
-                                            if winner:
-                                                dict['top bot score'][0] += 1
-                                                self.top_bot_score[0] += 1
-                                            else:
-                                                dict['top bot score'][1] += 1
-                                                self.top_bot_score[1] += 1
-                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score - 1}/game_{self.game}_score_{self.score - 1}_info.json", 'w') as f:
-                                                json.dump(dict, f, indent=2)
-                                        # if self.game == 3:
-                                        #     half = False
-                                        #     for sc in self.top_bot_score:
-                                        #         if sc == 11:
-                                        #             half = True
-                                        #     if half:
-                                        #         temp = self.top_bot_score
+                                            if self.score == 0 and self.game != 1:
+                                                with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game-1}_score_{self.last_score-1}/game_{self.game-1}_score_{self.last_score-1}_info.json", 'r') as score_json:
+                                                    dict = json.load(score_json)
+                                                winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                                dict['winner'] = winner
+                                                if winner:
+                                                    dict['top bot score'][0] += 1
+                                                    self.top_bot_score[0] += 1
+                                                else:
+                                                    dict['top bot score'][1] += 1
+                                                    self.top_bot_score[1] += 1
+                                                with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game-1}_score_{self.last_score - 1}/game_{self.game-1}_score_{self.last_score - 1}_info.json", 'w') as f:
+                                                    json.dump(dict, f, indent=2)
+                                            # if self.game == 3:
+                                            #     half = False
+                                            #     for sc in self.top_bot_score:
+                                            #         if sc == 11:
+                                            #             half = True
+                                            #     if half:
+                                            #         temp = self.top_bot_score
 
-                                        self.joint_list = []
-                                        self.score += 1
-                                        self.one_count = 0
+                                            self.joint_list = []
+                                            self.score += 1
+                                            self.one_count = 0
                                     else:
                                         self.joint_list = []
                                         self.one_count = 0
@@ -433,12 +432,15 @@ class video_resolver:
                         else:
                             self.zero_count += 1
 
-                        if self.zero_count > 1100 and self.game < 3:
+                        if self.zero_count > 1100 and self.zero_count < 1500 and self.score != 0 and self.game < 3:
                             self.last_score = self.score
+                            print(self.zero_count, '='*50)
                             self.zero_count = 0
                             self.top_bot_score = [0, 0]
                             self.game += 1
                             self.score = 0
+                        elif self.zero_count > 1500:
+                            self.zero_count = 0
 
                         self.saved_count += 1
                         print(self.saved_count, ' / ', self.total_saved_count)
