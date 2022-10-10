@@ -4,29 +4,9 @@ import math
 import pickle
 import numpy as np
 import json
-import os
 import torch.nn.functional as F
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
-
-def get_path(base):
-    paths = []
-    with os.scandir(base) as entries:
-        for entry in entries:
-            paths.append(base + '/' + entry.name)
-            pass
-    return paths
-
-
-def top_bottom(joint):
-    a = joint[0][15][1] + joint[0][16][1]
-    b = joint[1][15][1] + joint[1][16][1]
-    if a > b:
-        top = 1
-        bottom = 0
-    else:
-        top = 0
-        bottom = 1
-    return top, bottom
+from utility import top_bottom, get_path
 
 
 def right_area(joint, player, multi_point, first_d):
@@ -66,9 +46,7 @@ def check_pos_and_score(d_list, joint_list, mp, top_bot_score):
 
 def get_original_data(path):
     data_x = []
-
-    vid_name = path.split('/')[-3]
-
+    # vid_name = path.split('/')[-3]
     with open(path, 'r') as score_json:
         frame_dict = json.load(score_json)
 

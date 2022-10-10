@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 
-filePath = 'model_weights/scene_classifier.pt'
 
 class scene_classifier(nn.Module):
     def __init__(self):
@@ -19,6 +18,8 @@ class scene_classifier(nn.Module):
         self.bn3 = nn.BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
         self.l1 = nn.Linear(27*27*32, 2)
         self.dropout = nn.Dropout(p=0.1)
+
+
     def forward(self, x):
         x = self.bn1(self.pool1(self.conv1(x)))
         x = F.relu(x)
@@ -32,10 +33,12 @@ class scene_classifier(nn.Module):
         out = self.dropout(x)
         return out
 
+
 def build_model(path, device):
     model = torch.load(path, map_location=torch.device(device))
     model.eval()
     return model
+
 
 def preprocess(img, device):
     pre = transforms.Compose([
@@ -47,6 +50,7 @@ def preprocess(img, device):
     img = pre(img).to(device)
     batch = torch.unsqueeze(img, 0)
     return batch
+
 
 def predict(model, batch):
     out = model(batch)

@@ -5,10 +5,10 @@ import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils, transformer_utils
-import shot_recog
+from shot_recognition import check_hit_frame, add_result
+from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
-from utility import check_dir, get_path, parse_time, top_bottom, get_area_bound, cal_dis, correction, extension, type_classify
 
 
 class video_resolver:
@@ -324,10 +324,10 @@ class video_resolver:
                                         if dz_count/len(shuttle_direction) < 0.9:
                                             # correct = transformer_utils.check_pos_and_score(shuttle_direction, orig_joint_list, self.multi_points, self.top_bot_score)
                                             # print('Score correct...') if correct else print('Wrong score...')
-                                            shot_list, move_dir_list = shot_recog.check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
+                                            shot_list, move_dir_list = check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
                                             print(shot_list, move_dir_list)
                                             offensive, pos = type_classify(shot_list)
-                                            success = shot_recog.add_result(f'{store_path}/', f"{store_path}/game_{self.game}_score_{self.score}.mp4", shot_list, move_dir_list, self.true_court_points)
+                                            success = add_result(f'{store_path}/', f"{store_path}/game_{self.game}_score_{self.score}.mp4", shot_list, move_dir_list, self.true_court_points)
                                             if offensive is None:
                                                 top_type = None
                                                 bot_type = None

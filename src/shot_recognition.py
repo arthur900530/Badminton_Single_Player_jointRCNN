@@ -1,74 +1,61 @@
 import numpy as np
-import json
 import cv2
 from PIL import Image, ImageDraw, ImageFont
-from utility import zone, cal_move_direction
+from utility import zone, cal_move_direction, top_bottom
 
 
-def top_bottom(joint):
-    a = joint[0][-1][1] + joint[0][-2][1]
-    b = joint[1][-1][1] + joint[1][-2][1]
-    if a > b:
-        top = 1
-        bottom = 0
-    else:
-        top = 0
-        bottom = 1
-    return top, bottom
-
-
-def get_area(court_points, bounds):
-    l_a = (court_points[0][1] - court_points[4][1]) / (
-            court_points[0][0] - court_points[4][0])
-    l_b = court_points[0][1] - l_a * court_points[0][0]
-    r_a = (court_points[1][1] - court_points[5][1]) / (
-            court_points[1][0] - court_points[5][0])
-    r_b = court_points[1][1] - r_a * court_points[1][0]
-    all = []
-
-    tb0x = (min(court_points[0][1], court_points[1][1]) - l_b) / l_a
-    tbox = (min(court_points[0][1], court_points[1][1]) - r_b) / r_a
-    tb1x = (bounds[0][1] - l_b) / l_a
-    tb2x = (bounds[0][1] - r_b) / r_a
-    top_back_area = np.array([[tb0x, min(court_points[0][1], court_points[1][1])], [tbox, min(court_points[0][1], court_points[1][1])], [tb2x, bounds[0][1]], [tb1x, bounds[0][1]]], np.int32)
-    top_b = top_back_area.reshape((-1, 1, 2))
-
-    tm1x = (bounds[1][1] - l_b) / l_a
-    tm2x = (bounds[1][1] - r_b) / r_a
-    top_mid_area = np.array([[tb1x, bounds[0][1]], [tb2x, bounds[0][1]], [tm2x, bounds[1][1]], [tm1x, bounds[1][1]]], np.int32)
-    top_m = top_mid_area.reshape((-1, 1, 2))
-
-    tf1x = (bounds[2][1] - l_b) / l_a
-    tf2x = (bounds[2][1] - r_b) / r_a
-    top_front_area = np.array(
-        [[tm1x, bounds[1][1]], [tm2x, bounds[1][1]], [tf2x, bounds[2][1]], [tf1x, bounds[2][1]]], np.int32)
-    top_f = top_front_area.reshape((-1, 1, 2))
-
-    bf1x = (bounds[3][1] - l_b) / l_a
-    bf2x = (bounds[3][1] - r_b) / r_a
-    bot_front_area = np.array(
-        [[tf1x, bounds[2][1]+2], [tf2x, bounds[2][1]+2], [bf2x, bounds[3][1]], [bf1x, bounds[3][1]]], np.int32)
-    bot_f = bot_front_area.reshape((-1, 1, 2))
-
-    bm1x = (bounds[4][1] - l_b) / l_a
-    bm2x = (bounds[4][1] - r_b) / r_a
-    bot_mid_area = np.array(
-        [[bf1x, bounds[3][1]], [bf2x, bounds[3][1]], [bm2x, bounds[4][1]], [bm1x, bounds[4][1]]], np.int32)
-    bot_m = bot_mid_area.reshape((-1, 1, 2))
-
-    bb1x = (bounds[5][1] - l_b) / l_a
-    bb2x = (bounds[5][1] - r_b) / r_a
-    bot_back_area = np.array(
-        [[bm1x, bounds[4][1]], [bm2x, bounds[4][1]], [bb2x, bounds[5][1]], [bb1x, bounds[5][1]]], np.int32)
-    bot_b = bot_back_area.reshape((-1, 1, 2))
-    # (39, 171, 242)
-    all.append((top_b, (255, 255, 0)))
-    all.append((top_m, (255, 255, 0)))
-    all.append((top_f, (255, 255, 0)))
-    all.append((bot_f, (0, 255, 255)))
-    all.append((bot_m, (0, 255, 255)))
-    all.append((bot_b, (0, 255, 255)))
-    return all
+# def get_area(court_points, bounds):
+#     l_a = (court_points[0][1] - court_points[4][1]) / (
+#             court_points[0][0] - court_points[4][0])
+#     l_b = court_points[0][1] - l_a * court_points[0][0]
+#     r_a = (court_points[1][1] - court_points[5][1]) / (
+#             court_points[1][0] - court_points[5][0])
+#     r_b = court_points[1][1] - r_a * court_points[1][0]
+#     all = []
+#
+#     tb0x = (min(court_points[0][1], court_points[1][1]) - l_b) / l_a
+#     tbox = (min(court_points[0][1], court_points[1][1]) - r_b) / r_a
+#     tb1x = (bounds[0][1] - l_b) / l_a
+#     tb2x = (bounds[0][1] - r_b) / r_a
+#     top_back_area = np.array([[tb0x, min(court_points[0][1], court_points[1][1])], [tbox, min(court_points[0][1], court_points[1][1])], [tb2x, bounds[0][1]], [tb1x, bounds[0][1]]], np.int32)
+#     top_b = top_back_area.reshape((-1, 1, 2))
+#
+#     tm1x = (bounds[1][1] - l_b) / l_a
+#     tm2x = (bounds[1][1] - r_b) / r_a
+#     top_mid_area = np.array([[tb1x, bounds[0][1]], [tb2x, bounds[0][1]], [tm2x, bounds[1][1]], [tm1x, bounds[1][1]]], np.int32)
+#     top_m = top_mid_area.reshape((-1, 1, 2))
+#
+#     tf1x = (bounds[2][1] - l_b) / l_a
+#     tf2x = (bounds[2][1] - r_b) / r_a
+#     top_front_area = np.array(
+#         [[tm1x, bounds[1][1]], [tm2x, bounds[1][1]], [tf2x, bounds[2][1]], [tf1x, bounds[2][1]]], np.int32)
+#     top_f = top_front_area.reshape((-1, 1, 2))
+#
+#     bf1x = (bounds[3][1] - l_b) / l_a
+#     bf2x = (bounds[3][1] - r_b) / r_a
+#     bot_front_area = np.array(
+#         [[tf1x, bounds[2][1]+2], [tf2x, bounds[2][1]+2], [bf2x, bounds[3][1]], [bf1x, bounds[3][1]]], np.int32)
+#     bot_f = bot_front_area.reshape((-1, 1, 2))
+#
+#     bm1x = (bounds[4][1] - l_b) / l_a
+#     bm2x = (bounds[4][1] - r_b) / r_a
+#     bot_mid_area = np.array(
+#         [[bf1x, bounds[3][1]], [bf2x, bounds[3][1]], [bm2x, bounds[4][1]], [bm1x, bounds[4][1]]], np.int32)
+#     bot_m = bot_mid_area.reshape((-1, 1, 2))
+#
+#     bb1x = (bounds[5][1] - l_b) / l_a
+#     bb2x = (bounds[5][1] - r_b) / r_a
+#     bot_back_area = np.array(
+#         [[bm1x, bounds[4][1]], [bm2x, bounds[4][1]], [bb2x, bounds[5][1]], [bb1x, bounds[5][1]]], np.int32)
+#     bot_b = bot_back_area.reshape((-1, 1, 2))
+#     # (39, 171, 242)
+#     all.append((top_b, (255, 255, 0)))
+#     all.append((top_m, (255, 255, 0)))
+#     all.append((top_f, (255, 255, 0)))
+#     all.append((bot_f, (0, 255, 255)))
+#     all.append((bot_m, (0, 255, 255)))
+#     all.append((bot_b, (0, 255, 255)))
+#     return all
 
 
 # [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
@@ -116,40 +103,6 @@ def add_result(base, vid_path, shot_list, move_dir_list, court_points):
         else:
             break
     return True
-
-
-def get_pos_percentage(joint_list, bounds):
-    top_front = 0
-    top_mid = 0
-    top_back = 0
-    bot_front = 0
-    bot_mid = 0
-    bot_back = 0
-    for i in range(len(joint_list)):
-        top, bot = top_bottom(joint_list[i])
-        t_coord = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
-        b_coord = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
-        t_pos = check_pos(t_coord, bounds, 'top')
-        b_pos = check_pos(b_coord, bounds, 'bot')
-        if t_pos == 'front':
-            top_front += 1
-        elif t_pos == 'mid':
-            top_mid += 1
-        elif t_pos == 'back':
-            top_back += 1
-
-        if b_pos == 'front':
-            bot_front += 1
-        elif b_pos == 'mid':
-            bot_mid += 1
-        elif b_pos == 'back':
-            bot_back += 1
-    all = len(joint_list)
-    result = {
-        'top': [top_front / all, top_mid / all, top_back / all],
-        'bot': [bot_front / all, bot_mid / all, bot_back / all]
-    }
-    return result
 
 
 def check_hit_frame(direction_list, joint_list, court_points, multi_points):
@@ -346,32 +299,32 @@ def check_shot(pos_top, pos_bot, serve):
             return '↑ 長球', False
 
 
-def get_data(path):
-    input = []
-    joint_list = []
-
-    with open(path, 'r') as mp_json:
-        frame_dict = json.load(mp_json)
-
-    for i in range(len(frame_dict['frames'])):
-        temp_x = []
-        if i == 0:
-            temp_f = []
-            former = np.array(frame_dict['frames'][i]['joint'])
-            for p in range(2):
-                temp_f.append(former[p][5:])
-            temp_f = np.array(temp_f)
-            joint_list.append(frame_dict['frames'][i]['joint'])
-            continue
-        joint_list.append(frame_dict['frames'][i]['joint'])
-        joint = frame_dict['frames'][i]['joint']
-        for p in range(2):
-            temp_x.append(joint[p][5:])  # ignore head part
-        temp_x = np.array(temp_x)
-        dif_x = temp_f - temp_x
-        temp_f = temp_x
-        input.append(dif_x)
-
-    input = np.array(input)
-    joint_list = np.array(joint_list)
-    return input, joint_list
+# def get_data(path):
+#     inputs = []
+#     joint_list = []
+#
+#     with open(path, 'r') as mp_json:
+#         frame_dict = json.load(mp_json)
+#
+#     for i in range(len(frame_dict['frames'])):
+#         temp_x = []
+#         if i == 0:
+#             temp_f = []
+#             former = np.array(frame_dict['frames'][i]['joint'])
+#             for p in range(2):
+#                 temp_f.append(former[p][5:])
+#             temp_f = np.array(temp_f)
+#             joint_list.append(frame_dict['frames'][i]['joint'])
+#             continue
+#         joint_list.append(frame_dict['frames'][i]['joint'])
+#         joint = frame_dict['frames'][i]['joint']
+#         for p in range(2):
+#             temp_x.append(joint[p][5:])  # ignore head part
+#         temp_x = np.array(temp_x)
+#         dif_x = temp_f - temp_x
+#         temp_f = temp_x
+#         inputs.append(dif_x)
+#
+#     inputs = np.array(inputs)
+#     joint_list = np.array(joint_list)
+#     return inputs, joint_list
