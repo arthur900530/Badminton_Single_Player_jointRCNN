@@ -11,6 +11,70 @@ from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_P
 from scene_utils import scene_classifier
 
 
+def check_type(last_type, wait_list):
+    sum = 0
+    if last_type == 1:
+        for pair in wait_list:
+            sum += pair[0]
+        if sum <= 3:
+            return True
+        else:
+            return False
+    else:
+        for pair in wait_list:
+            sum += pair[0]
+        if sum >= 3:
+            return True
+        else:
+            return False
+
+
+# check if player is in court
+def in_court(court_info, court_points, joint):
+    l_a = court_info[0]
+    l_b = court_info[1]
+    r_a = court_info[2]
+    r_b = court_info[3]
+    ankle_x = (joint[15][0] + joint[16][0]) / 2
+    ankle_y = (joint[15][1] + joint[16][1]) / 2
+    top = ankle_y > court_points[0][1]
+    bottom = ankle_y < court_points[5][1]
+    lmp_x = (ankle_y - l_b) / l_a
+    rmp_x = (ankle_y - r_b) / r_a
+    left = ankle_x > lmp_x
+    right = ankle_x < rmp_x
+
+    if left and right and top and bottom:
+        return True
+    else:
+        return False
+
+
+# get the index of the in court players
+def score_rank(court_info, court_points, joints):
+    indexes = []
+    for i in range(len(joints)):
+        if in_court(court_info, court_points, joints[i]):
+            indexes.append(i)
+    if len(indexes) < 2:
+        return False
+    else:
+        return indexes
+
+
+# check if up court and bot court got player
+def check_pos(court_mp, indexes, boxes):
+    for i in range(len(indexes)):
+        combination = 1
+        if boxes[indexes[0]][1] < court_mp < boxes[indexes[combination]][3]:
+            return True, [0, combination]
+        elif boxes[indexes[0]][3] > court_mp > boxes[indexes[combination]][1]:
+            return True, [0, combination]
+        else:
+            combination += 1
+    return False, [0, 0]
+
+
 class video_resolver:
     def __init__(self, vid_path, output_base='E:/test_videos'):
         self.start_time = time.time()
@@ -23,7 +87,7 @@ class video_resolver:
         self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True, num_keypoints=17)
         self.model.to(self.device).eval()
         self.scene_model = scene_utils.build_model('model_weights/scene_classifier.pt', self.device)
-        self.bsp_model = transformer_utils.build_model('model_weights/weights/clean_seq_labling2.pt')
+        self.bsp_model = transformer_utils.build_model('model_weights/weights/clean_seq_labling_ultimate_2.pt')
 
         self.court_kp_model = torch.load('model_weights/court_kpRCNN.pth')
         self.court_kp_model.to(self.device).eval()
@@ -59,11 +123,8 @@ class video_resolver:
         self.true_court_points = None
         self.multi_points = None
         self.court_info = None
-        self.joint_list = []
-        self.wait_list = []
-        self.last_type = 0
-        self.checkpoint = False
 
+        self.last_type = 0
         self.game = 1
         self.zero_count = 0
         self.score = 0
@@ -71,6 +132,7 @@ class video_resolver:
         self.top_bot_score = [0, 0]
         self.one_count = 0
 
+    # get and set the court information
     def get_court_info(self, img):
         with torch.no_grad():
             img = F.to_tensor(img)
@@ -119,65 +181,7 @@ class video_resolver:
 
         return True
 
-    def check_type(self, last_type):
-        sum = 0
-        if last_type == 1:
-            for pair in self.wait_list:
-                sum += pair[0]
-            if sum <= 3:
-                return True
-            else:
-                return False
-        else:
-            for pair in self.wait_list:
-                sum += pair[0]
-            if sum >= 3:
-                return True
-            else:
-                return False
-
-    def in_court(self, joint):
-        l_a = self.court_info[0]
-        l_b = self.court_info[1]
-        r_a = self.court_info[2]
-        r_b = self.court_info[3]
-        ankle_x = (joint[15][0] + joint[16][0]) / 2
-        ankle_y = (joint[15][1] + joint[16][1]) / 2
-        top = ankle_y > self.court_points[0][1]
-        bottom = ankle_y < self.court_points[5][1]
-        lmp_x = (ankle_y - l_b) / l_a
-        rmp_x = (ankle_y - r_b) / r_a
-        left = ankle_x > lmp_x
-        right = ankle_x < rmp_x
-
-        if left and right and top and bottom:
-            return True
-        else:
-            return False
-
-    def check_pos(self, indexes, boxes):
-        court_mp = self.court_info[4]
-        for i in range(len(indexes)):
-            combination = 1
-            if boxes[indexes[0]][1] < court_mp and boxes[indexes[combination]][3] > court_mp:
-                return True, [0, combination]
-            elif boxes[indexes[0]][3] > court_mp and boxes[indexes[combination]][1] < court_mp:
-                return True, [0, combination]
-            else:
-                combination += 1
-        return False, [0, 0]
-
-    def score_rank(self, joints):
-        indexes = []
-        for i in range(len(joints)):
-            if self.in_court(joints[i]):
-                indexes.append(i)
-        if len(indexes) < 2:
-            return False
-        else:
-            return indexes
-
-    def draw_keypoints(self, outputs, image):
+    def draw_key_points(self, outputs, image):
         edges = [(0, 1), (0, 2), (2, 4), (1, 3), (6, 8), (8, 10), (11, 12), (5, 7),
                  (7, 9), (5, 11), (11, 13), (13, 15), (6, 12), (12, 14), (14, 16), (5, 6)]
         # bounds = get_area_bound(self.court_points)
@@ -188,11 +192,11 @@ class video_resolver:
         playerJoints = []
         b = outputs[0]['boxes'].cpu().detach().numpy()
         j = outputs[0]['keypoints'].cpu().detach().numpy()
-        topScores = self.score_rank(j)
+        topScores = score_rank(self.court_info, self.court_points, j)
         if topScores == False:
             return image, True
 
-        fit, combination = self.check_pos(topScores, b)
+        fit, combination = check_pos(self.court_info[4], topScores, b)
 
         top, bot = top_bottom([j[topScores[combination[0]]], j[topScores[combination[1]]]])
 
@@ -263,8 +267,9 @@ class video_resolver:
             return image, True
 
     def resolve(self):
+        joint_list = []
         joint_img_list = []
-
+        wait_list = []
         while self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
@@ -274,29 +279,28 @@ class video_resolver:
                     # slice video into score videos
                     p = scene_utils.predict(self.scene_model, sceneImg)
                     pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-                    if len(self.wait_list) < 5:
-                        self.wait_list.append((p, pil_image, frame))
+                    if len(wait_list) < 5:
+                        wait_list.append((p, pil_image, frame))
                     else:
-                        tup = self.wait_list.pop(0)
-                        self.wait_list.append((p, pil_image, frame))
+                        tup = wait_list.pop(0)
+                        wait_list.append((p, pil_image, frame))
                         p = tup[0]
                         pil_image = tup[1]
                         frame = tup[2]
                         if p != self.last_type:
-                            correct = self.check_type(self.last_type)
+                            correct = check_type(self.last_type, wait_list)
                             if not correct:
                                 if p == 1:
                                     p = 0
                                 else:
                                     p = 1
                             else:
-                                self.checkpoint = True
                                 if p == 0:
-                                    if len(self.joint_list) / self.one_count > 0.6 and self.one_count > 25:  # 25 is changable
+                                    if len(joint_list) / self.one_count > 0.6 and self.one_count > 25:  # 25 is changable
                                         if not self.start_recording:
                                             self.start_recording = True
                                             self.end_frame = self.frame_count
-                                        framesDict = {'frames': self.joint_list}
+                                        framesDict = {'frames': joint_list}
                                         store_path = f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score}"
                                         check_dir(store_path)
                                         start_time = parse_time(self.FPS, self.start_frame)
@@ -361,7 +365,13 @@ class video_resolver:
                                             if self.score != 0:
                                                 with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json", 'r') as score_json:
                                                     dict = json.load(score_json)
-                                                winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                                if 1 in shuttle_direction and 2 in shuttle_direction:
+                                                    winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                                elif 1 in shuttle_direction and 2 not in shuttle_direction:
+                                                    winner = False
+                                                else:
+                                                    winner = True
+
                                                 dict['winner'] = winner
                                                 if winner:
                                                     dict['top bot score'][0] += 1
@@ -393,22 +403,20 @@ class video_resolver:
                                             #     if half:
                                             #         temp = self.top_bot_score
 
-                                            self.joint_list = []
+                                            joint_list = []
                                             self.score += 1
                                             self.one_count = 0
                                     else:
-                                        self.joint_list = []
+                                        joint_list = []
                                         self.one_count = 0
                                 else:
                                     if self.court_points == None:
-                                        _ = self.get_court_info(img=self.wait_list[2][2])
+                                        _ = self.get_court_info(img=wait_list[2][2])
                                         print(self.true_court_points)
                                         print("Get!")
                                         self.court_kp_model = None
                                     # self.one_count += 1
                                 self.last_type = p
-                        else:
-                            self.checkpoint = False
                         if p == 1:
                             if self.start_recording:
                                 self.start_frame = self.frame_count
@@ -418,13 +426,13 @@ class video_resolver:
                             image = image.unsqueeze(0).to(self.device)
                             with torch.no_grad():
                                 outputs = self.model(image)
-                            output_image, player_joints = self.draw_keypoints(outputs, frame)
+                            output_image, player_joints = self.draw_key_points(outputs, frame)
 
                             if player_joints != True:
                                 for points in player_joints:
                                     for i, joints in enumerate(points):
                                         points[i] = joints[0:2]
-                                self.joint_list.append({
+                                joint_list.append({
                                     'joint': player_joints,
                                 })
                             joint_img_list.append(output_image)
@@ -449,8 +457,8 @@ class video_resolver:
                     self.frame_count += 1
             else:
                 break
-
-        with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json", 'r') as score_json:
+        g = self.game-1 if self.game <= 3 else 3
+        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{self.last_score-1}/game_{g}_score_{self.last_score-1}_info.json", 'r') as score_json:
             dict = json.load(score_json)
         dict['winner'] = True if self.top_bot_score[0] > self.top_bot_score[1] else False
         if dict['winner']:
@@ -459,7 +467,7 @@ class video_resolver:
         else:
             self.top_bot_score[1] += 1
             dict['top bot score'] = self.top_bot_score
-        with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json",'w') as f:
+        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{self.last_score-1}/game_{g}_score_{self.last_score-1}_info.json",'w') as f:
             json.dump(dict, f, indent=2)
 
         self.cap.release()
@@ -491,4 +499,3 @@ for path in paths:
 for vid_path in vid_paths:
     vpr = video_resolver(vid_path, output_base='E:/test_videos')    # output base is where "outputs" dir is
     vpr.resolve()
-
