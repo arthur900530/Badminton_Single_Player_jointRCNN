@@ -410,6 +410,15 @@ class video_resolver:
                                     one_count = 0
                             last_type = p
                         if p == 1:
+                            # check if next game starts
+                            if zero_count != 0 and 1100 < zero_count < 1500 and score != 0 and game < 3:
+                                res_game_info.append({f'g{game}':score})
+                                last_score = score
+                                game += 1
+                                score = 0
+                                top_bot_score = [0, 0]
+                                print(zero_count, '=' * 50)
+                            zero_count = 0
                             # get the court info when first meet the right shooting angle
                             if self.court_points is None:
                                 self.multi_points, self.true_court_points, self.court_points, self.court_info = get_court_info(
@@ -437,25 +446,19 @@ class video_resolver:
                                     'joint': player_joints,
                                 })
                             joint_img_list.append(output_image)
-                            if zero_count != 0 and 1100 < zero_count < 1500 and score != 0 and game < 3:
-                                last_score = score
-                                game += 1
-                                score = 0
-                                top_bot_score = [0, 0]
-                                print(zero_count, '=' * 50)
-                            zero_count = 0
+
                         else:
                             zero_count += 1
 
                         self.saved_count += 1
                         print(self.saved_count, ' / ', self.total_saved_count)
-                        self.frame_count += 1
-                else:
-                    self.frame_count += 1
+                self.frame_count += 1
             else:
                 break
+        self.cap.release()
+        cv2.destroyAllWindows()
         g = game-1 if game <= 3 else 3
-        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{last_score-1}/game_{g}_score_{last_score-1}_info.json", 'r') as score_json:
+        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{last_score-1}/info.json", 'r') as score_json:
             dict = json.load(score_json)
         dict['winner'] = True if top_bot_score[0] > top_bot_score[1] else False
         if dict['winner']:
@@ -464,11 +467,12 @@ class video_resolver:
         else:
             top_bot_score[1] += 1
             dict['top bot score'] = top_bot_score
-        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{last_score-1}/game_{g}_score_{last_score-1}_info.json",'w') as f:
+        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{last_score-1}/info.json",'w') as f:
             json.dump(dict, f, indent=2)
 
-        self.cap.release()
-        cv2.destroyAllWindows()
+        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json",'w') as f:
+            json.dump(res_game_info, f, indent=2)
+
         print(f"Second cost: {round(time.time() - self.start_time, 1)}")
         print(f'Frame count:{self.frame_count}')
         print(f'Save count:{self.saved_count}')
