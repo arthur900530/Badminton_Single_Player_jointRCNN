@@ -4,11 +4,124 @@ import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils, transformer_utils
-from pipeline_utils import check_type, score_rank, check_pos
+# from pipeline_utils import check_type, score_rank, check_pos, get_court_info
 from shot_recognition import check_hit_frame, add_result
 from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
+
+
+def check_type(last_type, wait_list):
+    sum = 0
+    if last_type == 1:
+        for pair in wait_list:
+            sum += pair[0]
+        if sum <= 3:
+            return True
+        else:
+            return False
+    else:
+        for pair in wait_list:
+            sum += pair[0]
+        if sum >= 3:
+            return True
+        else:
+            return False
+
+
+# check if player is in court
+def in_court(court_info, court_points, joint):
+    l_a = court_info[0]
+    l_b = court_info[1]
+    r_a = court_info[2]
+    r_b = court_info[3]
+    ankle_x = (joint[15][0] + joint[16][0]) / 2
+    ankle_y = (joint[15][1] + joint[16][1]) / 2
+    top = ankle_y > court_points[0][1]
+    bottom = ankle_y < court_points[5][1]
+    lmp_x = (ankle_y - l_b) / l_a
+    rmp_x = (ankle_y - r_b) / r_a
+    left = ankle_x > lmp_x
+    right = ankle_x < rmp_x
+
+    if left and right and top and bottom:
+        return True
+    else:
+        return False
+
+
+# get the index of the in court players
+def score_rank(court_info, court_points, joints):
+    indexes = []
+    for i in range(len(joints)):
+        if in_court(court_info, court_points, joints[i]):
+            indexes.append(i)
+    if len(indexes) < 2:
+        return False
+    else:
+        return indexes
+
+
+# check if up court and bot court got player
+def check_pos(court_mp, indexes, boxes):
+    for i in range(len(indexes)):
+        combination = 1
+        if boxes[indexes[0]][1] < court_mp < boxes[indexes[combination]][3]:
+            return True, [0, combination]
+        elif boxes[indexes[0]][3] > court_mp > boxes[indexes[combination]][1]:
+            return True, [0, combination]
+        else:
+            combination += 1
+    return False, [0, 0]
+
+
+# get and set the court information
+def get_court_info(frame_height, court_kp_model, court_kp_model_old, img):
+    with torch.no_grad():
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        img = F.to_tensor(img)
+        img = img.unsqueeze(0)
+        img = img.to(device)
+        output = court_kp_model(img)
+        output_old = court_kp_model_old(img)
+    scores = output[0]['scores'].detach().cpu().numpy()
+    high_scores_idxs = np.where(scores > 0.7)[0].tolist()
+    post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs],
+                                        output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy()
+    keypoints = []
+    for kps in output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
+        keypoints.append([list(map(int, kp[:2])) for kp in kps])
+    scores_old = output_old[0]['scores'].detach().cpu().numpy()
+    high_scores_idxs_old = np.where(scores_old > 0.7)[0].tolist()
+    post_nms_idxs_old = torchvision.ops.nms(output_old[0]['boxes'][high_scores_idxs_old],
+                                            output_old[0]['scores'][high_scores_idxs_old], 0.3).cpu().numpy()
+    keypoints_old = []
+    for kps in output_old[0]['keypoints'][high_scores_idxs_old][post_nms_idxs_old].detach().cpu().numpy():
+        keypoints_old.append([list(map(int, kp[:2])) for kp in kps])
+
+    true_court_points = copy.deepcopy(keypoints[0])
+    multi_points = extension(correction(np.array(keypoints[0]))).tolist()
+    print(multi_points)
+    keypoints_old[0][0][0] -= 80
+    keypoints_old[0][0][1] -= 80
+    keypoints_old[0][1][0] += 80
+    keypoints_old[0][1][1] -= 80
+    keypoints_old[0][2][0] -= 80
+    keypoints_old[0][3][0] += 80
+    keypoints_old[0][4][0] -= 80
+    keypoints_old[0][4][1] = min(keypoints_old[0][4][1] + 80, frame_height - 40)
+    keypoints_old[0][5][0] += 80
+    keypoints_old[0][5][1] = min(keypoints_old[0][5][1] + 80, frame_height - 40)
+    court_points = keypoints_old[0]
+
+    l_a = (true_court_points[0][1] - true_court_points[4][1]) / (true_court_points[0][0] - true_court_points[4][0])
+    l_b = true_court_points[0][1] - l_a * true_court_points[0][0]
+    r_a = (true_court_points[1][1] - true_court_points[5][1]) / (true_court_points[1][0] - true_court_points[5][0])
+    r_b = true_court_points[1][1] - r_a * true_court_points[1][0]
+    mp_y = (true_court_points[2][1] + true_court_points[3][1]) / 2
+    court_info = [l_a, l_b, r_a, r_b, mp_y]
+
+    return multi_points, true_court_points, court_points, court_info
 
 
 class video_resolver:
@@ -59,63 +172,6 @@ class video_resolver:
         self.true_court_points = None
         self.multi_points = None
         self.court_info = None
-
-        self.last_type = 0
-        self.game = 1
-        self.zero_count = 0
-        self.score = 0
-        self.last_score = 0
-        self.top_bot_score = [0, 0]
-        self.one_count = 0
-
-    # get and set the court information
-    def get_court_info(self, img):
-        with torch.no_grad():
-            img = F.to_tensor(img)
-            img = img.unsqueeze(0)
-            img = img.to(self.device)
-            output = self.court_kp_model(img)
-            output_old = self.court_kp_model_old(img)
-        scores = output[0]['scores'].detach().cpu().numpy()
-        high_scores_idxs = np.where(scores > 0.7)[0].tolist()
-        post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs],
-                                            output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy()
-        keypoints = []
-        for kps in output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
-            keypoints.append([list(map(int, kp[:2])) for kp in kps])
-        scores_old = output_old[0]['scores'].detach().cpu().numpy()
-        high_scores_idxs_old = np.where(scores_old > 0.7)[0].tolist()
-        post_nms_idxs_old = torchvision.ops.nms(output_old[0]['boxes'][high_scores_idxs_old],
-                                            output_old[0]['scores'][high_scores_idxs_old], 0.3).cpu().numpy()
-        keypoints_old = []
-        for kps in output_old[0]['keypoints'][high_scores_idxs_old][post_nms_idxs_old].detach().cpu().numpy():
-            keypoints_old.append([list(map(int, kp[:2])) for kp in kps])
-
-        self.true_court_points = copy.deepcopy(keypoints[0])
-        self.multi_points = extension(correction(np.array(keypoints[0]))).tolist()
-        print(self.multi_points)
-        keypoints_old[0][0][0] -= 80
-        keypoints_old[0][0][1] -= 80
-        keypoints_old[0][1][0] += 80
-        keypoints_old[0][1][1] -= 80
-        keypoints_old[0][2][0] -= 80
-        keypoints_old[0][3][0] += 80
-        keypoints_old[0][4][0] -= 80
-        keypoints_old[0][4][1] = min(keypoints_old[0][4][1] + 80, self.frame_height - 40)
-        keypoints_old[0][5][0] += 80
-        keypoints_old[0][5][1] = min(keypoints_old[0][5][1] + 80, self.frame_height - 40)
-        self.court_points = keypoints_old[0]
-
-        l_a = (self.true_court_points[0][1] - self.true_court_points[4][1]) / (
-                    self.true_court_points[0][0] - self.true_court_points[4][0])
-        l_b = self.true_court_points[0][1] - l_a * self.true_court_points[0][0]
-        r_a = (self.true_court_points[1][1] - self.true_court_points[5][1]) / (
-                    self.true_court_points[1][0] - self.true_court_points[5][0])
-        r_b = self.true_court_points[1][1] - r_a * self.true_court_points[1][0]
-        mp_y = (self.true_court_points[2][1] + self.true_court_points[3][1]) / 2
-        self.court_info = [l_a, l_b, r_a, r_b, mp_y]
-
-        return True
 
     def draw_key_points(self, outputs, image):
         edges = [(0, 1), (0, 2), (2, 4), (1, 3), (6, 8), (8, 10), (11, 12), (5, 7),
@@ -178,8 +234,8 @@ class video_resolver:
                 #             0, 0, 360, color, 15)
                 # cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
                 #             (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
-                #             0, int(((self.one_count - 1) * 10)),
-                #             int((30 + (self.one_count - 1) * 10)), sub_color, 6)
+                #             0, int(((one_count - 1) * 10)),
+                #             int((30 + (one_count - 1) * 10)), sub_color, 6)
 
                 alpha = 0.4
                 image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
@@ -206,6 +262,15 @@ class video_resolver:
         joint_list = []
         joint_img_list = []
         wait_list = []
+        last_type = 0
+        game = 1
+        score = 0
+        zero_count = 0
+        one_count = 0
+        last_score = 0
+        top_bot_score = [0, 0]
+        res_game_info = []
+
         while self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
@@ -223,141 +288,141 @@ class video_resolver:
                         p = tup[0]
                         pil_image = tup[1]
                         frame = tup[2]
-                        if p != self.last_type:
-                            correct = check_type(self.last_type, wait_list)
+                        if p != last_type:
+                            correct = check_type(last_type, wait_list)
                             if not correct:
                                 if p == 1:
                                     p = 0
                                 else:
                                     p = 1
-                            else:
-                                if p == 0:
-                                    if len(joint_list) / self.one_count > 0.6 and self.one_count > 25:  # 25 is changable
-                                        if not self.start_recording:
-                                            self.start_recording = True
-                                            self.end_frame = self.frame_count
-                                        framesDict = {'frames': joint_list}
-                                        store_path = f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score}"
-                                        check_dir(store_path)
-                                        start_time = parse_time(self.FPS, self.start_frame)
-                                        end_time = parse_time(self.FPS, self.end_frame)
-                                        out = cv2.VideoWriter(f"{store_path}/game_{self.game}_score_{self.score}.mp4", cv2.VideoWriter_fourcc(*'mp4v'),
-                                                              int(self.FPS / self.frame_rate), (self.frame_width, self.frame_height))
-                                        for img in joint_img_list:
-                                            out.write(img)
-                                        joint_img_list = []
-                                        out.release()
+                            if p == 0:
+                                if len(joint_list) / one_count > 0.6 and one_count > 25:  # 25 is changable
+                                    if not self.start_recording:
+                                        self.start_recording = True
+                                        self.end_frame = self.frame_count
+                                    framesDict = {'frames': joint_list}
+                                    store_path = f"{self.base}/outputs/{self.vid_name}/game_{game}_score_{score}"
+                                    check_dir(store_path)
+                                    start_time = parse_time(self.FPS, self.start_frame)
+                                    end_time = parse_time(self.FPS, self.end_frame)
+                                    out = cv2.VideoWriter(f"{store_path}/video.mp4", cv2.VideoWriter_fourcc(*'mp4v'), int(self.FPS / self.frame_rate), (self.frame_width, self.frame_height))
+                                    for img in joint_img_list:
+                                        out.write(img)
+                                    joint_img_list = []
+                                    out.release()
 
-                                        save_path = f"{store_path}/score_{self.score}_joint.json"
+                                    save_path = f"{store_path}/score_{score}_joint.json"
+                                    with open(save_path, 'w') as f:
+                                        json.dump(framesDict, f, indent=2)
+
+                                    joint_list = torch.tensor(np.array(transformer_utils.get_data(save_path)), dtype=torch.float32).to(self.device)
+                                    orig_joint_list = np.squeeze(np.array(transformer_utils.get_original_data(save_path)), axis=0)
+
+                                    shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
+                                    print(shuttle_direction)
+                                    dz_count = 0
+                                    for d in shuttle_direction:
+                                        if d == 0:
+                                            dz_count += 1
+                                    if dz_count/len(shuttle_direction) < 0.9:
+                                        # correct = transformer_utils.check_pos_and_score(shuttle_direction, orig_joint_list, self.multi_points, top_bot_score)
+                                        # print('Score correct...') if correct else print('Wrong score...')
+                                        shot_list, move_dir_list = check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
+                                        print(shot_list, move_dir_list)
+                                        offensive, pos = type_classify(shot_list)
+                                        success = add_result(f'{store_path}/', f"{store_path}/video.mp4", shot_list, move_dir_list, self.true_court_points)
+                                        if offensive is None:
+                                            top_type = None
+                                            bot_type = None
+                                        elif offensive:
+                                            top_type = True if pos else False
+                                            bot_type = True if not pos else False
+                                        elif not offensive:
+                                            top_type = False
+                                            bot_type = False
+
+                                        info_dict = {
+                                            'id':None,
+                                            'game':game,
+                                            'score':score,
+                                            'time':[start_time, end_time],
+                                            'long rally':True if len(shot_list) > 15 else False,
+                                            'shuttle direction':shuttle_direction,
+                                            'shot list':shot_list,
+                                            'move direction list':move_dir_list,
+                                            'top player type':top_type,
+                                            'bot player type': bot_type,
+                                            'winner':None,
+                                            'top bot score':top_bot_score
+                                        }
+                                        save_path = f"{store_path}/info.json"
                                         with open(save_path, 'w') as f:
-                                            json.dump(framesDict, f, indent=2)
+                                            json.dump(info_dict, f, indent=2)
+                                        if success:
+                                            print(f'Finish score_{score}')
 
-                                        joint_list = torch.tensor(np.array(transformer_utils.get_data(save_path)), dtype=torch.float32).to(self.device)
-                                        orig_joint_list = np.squeeze(np.array(transformer_utils.get_original_data(save_path)), axis=0)
-
-                                        shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
-                                        print(shuttle_direction)
-                                        dz_count = 0
-                                        for d in shuttle_direction:
-                                            if d == 0:
-                                                dz_count += 1
-                                        if dz_count/len(shuttle_direction) < 0.9:
-                                            # correct = transformer_utils.check_pos_and_score(shuttle_direction, orig_joint_list, self.multi_points, self.top_bot_score)
-                                            # print('Score correct...') if correct else print('Wrong score...')
-                                            shot_list, move_dir_list = check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
-                                            print(shot_list, move_dir_list)
-                                            offensive, pos = type_classify(shot_list)
-                                            success = add_result(f'{store_path}/', f"{store_path}/game_{self.game}_score_{self.score}.mp4", shot_list, move_dir_list, self.true_court_points)
-                                            if offensive is None:
-                                                top_type = None
-                                                bot_type = None
-                                            elif offensive:
-                                                top_type = True if pos else False
-                                                bot_type = True if not pos else False
-                                            elif not offensive:
-                                                top_type = False
-                                                bot_type = False
-
-                                            info_dict = {
-                                                'id':None,
-                                                'game':self.game,
-                                                'score':self.score,
-                                                'time':[start_time, end_time],
-                                                'long rally':True if len(shot_list) > 15 else False,
-                                                'shuttle direction':shuttle_direction,
-                                                'shot list':shot_list,
-                                                'move direction list':move_dir_list,
-                                                'top player type':top_type,
-                                                'bot player type': bot_type,
-                                                'winner':None,
-                                                'top bot score':self.top_bot_score
-                                            }
-                                            save_path = f"{store_path}/game_{self.game}_score_{self.score}_info.json"
-                                            with open(save_path, 'w') as f:
-                                                json.dump(info_dict, f, indent=2)
-                                            if success:
-                                                print(f'Finish score_{self.score}')
-
-                                            if self.score != 0:
-                                                with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score-1}/game_{self.game}_score_{self.score-1}_info.json", 'r') as score_json:
-                                                    dict = json.load(score_json)
-                                                if 1 in shuttle_direction and 2 in shuttle_direction:
-                                                    winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
-                                                elif 1 in shuttle_direction and 2 not in shuttle_direction:
-                                                    winner = False
-                                                else:
-                                                    winner = True
-
-                                                dict['winner'] = winner
-                                                if winner:
-                                                    dict['top bot score'][0] += 1
-                                                    self.top_bot_score[0] += 1
-                                                else:
-                                                    dict['top bot score'][1] += 1
-                                                    self.top_bot_score[1] += 1
-                                                with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game}_score_{self.score - 1}/game_{self.game}_score_{self.score - 1}_info.json", 'w') as f:
-                                                    json.dump(dict, f, indent=2)
-
-                                            if self.score == 0 and self.game != 1:
-                                                with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game-1}_score_{self.last_score-1}/game_{self.game-1}_score_{self.last_score-1}_info.json", 'r') as score_json:
-                                                    dict = json.load(score_json)
+                                        if score != 0:
+                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{game}_score_{score-1}/info.json", 'r') as score_json:
+                                                dict = json.load(score_json)
+                                            if 1 in shuttle_direction and 2 in shuttle_direction:
                                                 winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
-                                                dict['winner'] = winner
-                                                if winner:
-                                                    dict['top bot score'][0] += 1
-                                                    self.top_bot_score[0] += 1
-                                                else:
-                                                    dict['top bot score'][1] += 1
-                                                    self.top_bot_score[1] += 1
-                                                with open(f"{self.base}/outputs/{self.vid_name}/game_{self.game-1}_score_{self.last_score - 1}/game_{self.game-1}_score_{self.last_score - 1}_info.json", 'w') as f:
-                                                    json.dump(dict, f, indent=2)
-                                            # if self.game == 3:
-                                            #     half = False
-                                            #     for sc in self.top_bot_score:
-                                            #         if sc == 11:
-                                            #             half = True
-                                            #     if half:
-                                            #         temp = self.top_bot_score
+                                            elif 1 in shuttle_direction and 2 not in shuttle_direction:
+                                                winner = False
+                                            else:
+                                                winner = True
 
-                                            joint_list = []
-                                            self.score += 1
-                                            self.one_count = 0
-                                    else:
+                                            dict['winner'] = winner
+                                            if winner:
+                                                dict['top bot score'][0] += 1
+                                                top_bot_score[0] += 1
+                                            else:
+                                                dict['top bot score'][1] += 1
+                                                top_bot_score[1] += 1
+                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{game}_score_{score - 1}/info.json", 'w') as f:
+                                                json.dump(dict, f, indent=2)
+
+                                        if score == 0 and game != 1:
+                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{game-1}_score_{last_score-1}/info.json", 'r') as score_json:
+                                                dict = json.load(score_json)
+                                            winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                            dict['winner'] = winner
+                                            if winner:
+                                                dict['top bot score'][0] += 1
+                                                top_bot_score[0] += 1
+                                            else:
+                                                dict['top bot score'][1] += 1
+                                                top_bot_score[1] += 1
+                                            with open(f"{self.base}/outputs/{self.vid_name}/game_{game-1}_score_{last_score - 1}/info.json", 'w') as f:
+                                                json.dump(dict, f, indent=2)
+                                        # if game == 3:
+                                        #     half = False
+                                        #     for sc in top_bot_score:
+                                        #         if sc == 11:
+                                        #             half = True
+                                        #     if half:
+                                        #         temp = top_bot_score
+
                                         joint_list = []
-                                        self.one_count = 0
+                                        score += 1
+                                        one_count = 0
                                 else:
-                                    if self.court_points == None:
-                                        _ = self.get_court_info(img=wait_list[2][2])
-                                        print(self.true_court_points)
-                                        print("Get!")
-                                        self.court_kp_model = None
-                                    # self.one_count += 1
-                                self.last_type = p
+                                    joint_list = []
+                                    one_count = 0
+                            last_type = p
                         if p == 1:
+                            # get the court info when first meet the right shooting angle
+                            if self.court_points is None:
+                                self.multi_points, self.true_court_points, self.court_points, self.court_info = get_court_info(
+                                    self.frame_height, self.court_kp_model, self.court_kp_model_old,
+                                    img=wait_list[2][2])
+                                print(self.true_court_points)
+                                print("Get!")
+                                self.court_kp_model = None
+                                self.court_kp_model_old = None
                             if self.start_recording:
                                 self.start_frame = self.frame_count
                                 self.start_recording = False
-                            self.one_count += 1
+                            one_count += 1
                             image = self.transform(pil_image)
                             image = image.unsqueeze(0).to(self.device)
                             with torch.no_grad():
@@ -372,19 +437,15 @@ class video_resolver:
                                     'joint': player_joints,
                                 })
                             joint_img_list.append(output_image)
-                            self.zero_count = 0
+                            if zero_count != 0 and 1100 < zero_count < 1500 and score != 0 and game < 3:
+                                last_score = score
+                                game += 1
+                                score = 0
+                                top_bot_score = [0, 0]
+                                print(zero_count, '=' * 50)
+                            zero_count = 0
                         else:
-                            self.zero_count += 1
-
-                        if self.zero_count > 1100 and self.zero_count < 1500 and self.score != 0 and self.game < 3:
-                            self.last_score = self.score
-                            print(self.zero_count, '='*50)
-                            self.zero_count = 0
-                            self.top_bot_score = [0, 0]
-                            self.game += 1
-                            self.score = 0
-                        elif self.zero_count > 1500:
-                            self.zero_count = 0
+                            zero_count += 1
 
                         self.saved_count += 1
                         print(self.saved_count, ' / ', self.total_saved_count)
@@ -393,17 +454,17 @@ class video_resolver:
                     self.frame_count += 1
             else:
                 break
-        g = self.game-1 if self.game <= 3 else 3
-        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{self.last_score-1}/game_{g}_score_{self.last_score-1}_info.json", 'r') as score_json:
+        g = game-1 if game <= 3 else 3
+        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{last_score-1}/game_{g}_score_{last_score-1}_info.json", 'r') as score_json:
             dict = json.load(score_json)
-        dict['winner'] = True if self.top_bot_score[0] > self.top_bot_score[1] else False
+        dict['winner'] = True if top_bot_score[0] > top_bot_score[1] else False
         if dict['winner']:
-            self.top_bot_score[0] += 1
-            dict['top bot score'] = self.top_bot_score
+            top_bot_score[0] += 1
+            dict['top bot score'] = top_bot_score
         else:
-            self.top_bot_score[1] += 1
-            dict['top bot score'] = self.top_bot_score
-        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{self.last_score-1}/game_{g}_score_{self.last_score-1}_info.json",'w') as f:
+            top_bot_score[1] += 1
+            dict['top bot score'] = top_bot_score
+        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{last_score-1}/game_{g}_score_{last_score-1}_info.json",'w') as f:
             json.dump(dict, f, indent=2)
 
         self.cap.release()
@@ -411,7 +472,7 @@ class video_resolver:
         print(f"Second cost: {round(time.time() - self.start_time, 1)}")
         print(f'Frame count:{self.frame_count}')
         print(f'Save count:{self.saved_count}')
-        print(f'Score: {self.score}')
+        print(f'Score: {score}')
 
         with open('csv_records/pipeline_video_data.csv', 'a', newline='') as csvfile:
             fieldnames = ['vid_name', 'total_frame_count', 'total_saved_count', 'saved_count', 'score',
@@ -422,7 +483,7 @@ class video_resolver:
                 'total_frame_count': self.total_frame_count,
                 'total_saved_count': self.total_saved_count,
                 'saved_count': self.saved_count,
-                'score': self.score,
+                'score': score,
                 'execution_time(sec)': round(time.time() - self.start_time, 1)
             })
         return True
