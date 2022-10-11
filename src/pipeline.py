@@ -1,5 +1,4 @@
-import copy
-import csv, cv2, json, time, numpy as np, matplotlib
+import copy, csv, cv2, json, time, numpy as np, matplotlib
 from PIL import Image
 import torch, torchvision
 from torchvision.transforms import transforms

@@ -6,7 +6,7 @@ import numpy as np
 import json
 import torch.nn.functional as F
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
-from utility import top_bottom, get_path
+from utility import top_bottom
 
 
 def right_area(joint, player, multi_point, first_d):
