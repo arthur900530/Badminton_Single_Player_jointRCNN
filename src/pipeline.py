@@ -4,7 +4,7 @@ import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils, transformer_utils
-from shot_recognition import check_hit_frame, add_result
+from shot_recognition import check_hit_frame, add_result, add_result2
 from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
@@ -327,12 +327,7 @@ class video_resolver:
 
                                     start_time = parse_time(FPS, start_frame)
                                     end_time = parse_time(FPS, end_frame)
-                                    out = cv2.VideoWriter(f"{store_path}/video.mp4", cv2.VideoWriter_fourcc(*'mp4v'), int(FPS / frame_rate), (frame_width, frame_height))
-                                    for img in joint_img_list:
-                                        out.write(img)
-                                    joint_img_list = []
-                                    out.release()
-
+                                    # here lies the origin out
                                     framesDict = {'frames': joint_list}
                                     joint_save_path = f"{store_path}/score_{score}_joint.json"
                                     with open(joint_save_path, 'w') as f:
@@ -353,7 +348,13 @@ class video_resolver:
                                         shot_list, move_dir_list = check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
                                         print(shot_list, move_dir_list)
                                         offensive, pos = type_classify(shot_list)
-                                        success = add_result(f'{store_path}/', f"{store_path}/video.mp4", shot_list, move_dir_list, self.true_court_points)
+
+                                        out = cv2.VideoWriter(f"{store_path}/video.mp4",
+                                                              cv2.VideoWriter_fourcc(*'mp4v'), int(FPS / frame_rate),
+                                                              (frame_width, frame_height))
+                                        success = add_result2(out, joint_img_list, shot_list, move_dir_list)
+                                        out.release()
+
                                         if offensive is None:
                                             top_type = None
                                             bot_type = None
@@ -389,12 +390,9 @@ class video_resolver:
                                             json.dump(info_dict, f, indent=2)
                                         if success:
                                             print(f'Finish score_{score}')
-
-                                        joint_list = []
                                         score += 1
-                                        one_count = 0
-                                else:
                                     joint_list = []
+                                    joint_img_list = []
                                     one_count = 0
                             last_type = p
                         if p == 1:

@@ -99,9 +99,42 @@ def add_result(base, vid_path, shot_list, move_dir_list, court_points):
             else:
                 out.write(frame)
                 count += 1
-
         else:
             break
+    return True
+
+
+def add_result2(out, joint_img_list, shot_list, move_dir_list):
+    count = 1
+    index = 0
+    imax = len(shot_list)
+    for i in range(len(joint_img_list)):
+        bound = shot_list[index][2]
+        if bound >= count:
+            text = shot_list[index][0] + ' ' + move_dir_list[index][0]
+            cv2_im = cv2.cvtColor(joint_img_list[i], cv2.COLOR_BGR2RGB)
+            pil_im = Image.fromarray(cv2_im)
+            draw = ImageDraw.Draw(pil_im)
+            font = ImageFont.truetype("../font/msjh.ttc", 50, encoding="utf-8")
+            draw.text((900, 50), text, (255, 255, 255), font=font)
+            cv2_text_im = cv2.cvtColor(np.array(pil_im), cv2.COLOR_RGB2BGR)
+            out.write(cv2_text_im)
+            count += 1
+        elif count > bound and index < imax - 1:
+            index += 1
+            text = shot_list[index][0]
+            cv2_im = cv2.cvtColor(joint_img_list[i], cv2.COLOR_BGR2RGB)
+            pil_im = Image.fromarray(cv2_im)
+            draw = ImageDraw.Draw(pil_im)
+            font = ImageFont.truetype("../font/msjh.ttc", 50, encoding="utf-8")
+            draw.text((900, 50), text, (255, 255, 255), font=font)
+            cv2_text_im = cv2.cvtColor(np.array(pil_im), cv2.COLOR_RGB2BGR)
+            out.write(cv2_text_im)
+            count += 1
+        else:
+            out.write(joint_img_list[i])
+            count += 1
+
     return True
 
 
