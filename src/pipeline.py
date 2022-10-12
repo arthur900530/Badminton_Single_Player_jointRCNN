@@ -123,6 +123,7 @@ def get_court_info(frame_height, court_kp_model, court_kp_model_old, img):
     return multi_points, true_court_points, court_points, court_info
 
 
+# update the score using the serving player of next score
 def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, flip):
     with open(f"{base}/outputs/{vid_name}/game_{game}_score_{score}/info.json", 'r') as score_json:
         dict = json.load(score_json)
