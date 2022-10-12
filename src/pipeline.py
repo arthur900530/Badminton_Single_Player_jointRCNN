@@ -126,16 +126,19 @@ def get_court_info(frame_height, court_kp_model, court_kp_model_old, img):
 def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, flip):
     with open(f"{base}/outputs/{vid_name}/game_{game}_score_{score}/info.json", 'r') as score_json:
         dict = json.load(score_json)
-    if 1 in shuttle_direction and 2 in shuttle_direction:
-        winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
-    elif 1 in shuttle_direction and 2 not in shuttle_direction:
-        winner = True
+    if shuttle_direction is not None:
+        if 1 in shuttle_direction and 2 in shuttle_direction:
+            winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+        elif 1 in shuttle_direction and 2 not in shuttle_direction:
+            winner = True
+        else:
+            winner = False
+        winner = winner if not flip else not winner
     else:
-        winner = False
-
-    winner = winner if not flip else not winner
+        winner = True if top_bot_score[0] > top_bot_score[1] else False
 
     dict['winner'] = winner
+
     if winner:
         dict['top bot score'][0] += 1
         top_bot_score[0] += 1
@@ -360,6 +363,12 @@ class video_resolver:
                                             top_type = False
                                             bot_type = False
 
+                                        if score != 0:
+                                            top_bot_score = update_score(self.base, self.vid_name, game, score - 1,
+                                                                         shuttle_direction, top_bot_score, flip)
+                                        if score == 0 and game != 1:
+                                            top_bot_score = update_score(self.base, self.vid_name, game - 1, last_score - 1,
+                                                                         shuttle_direction, top_bot_score, flip)
                                         info_dict = {
                                             'id':None,
                                             'game':game,
@@ -380,12 +389,6 @@ class video_resolver:
                                         if success:
                                             print(f'Finish score_{score}')
 
-                                        if score != 0:
-                                            top_bot_score = update_score(self.base, self.vid_name, game, score - 1,
-                                                                         shuttle_direction, top_bot_score, flip)
-                                        if score == 0 and game != 1:
-                                            top_bot_score = update_score(self.base, self.vid_name, game - 1, last_score - 1,
-                                                                         shuttle_direction, top_bot_score, flip)
                                         joint_list = []
                                         score += 1
                                         one_count = 0
@@ -435,10 +438,8 @@ class video_resolver:
                                     'joint': player_joints,
                                 })
                             joint_img_list.append(output_image)
-
                         else:
                             zero_count += 1
-
                         saved_count += 1
                         print(saved_count, ' / ', total_saved_count)
                 frame_count += 1
@@ -447,29 +448,21 @@ class video_resolver:
         self.cap.release()
         cv2.destroyAllWindows()
 
-        # last game
-        res_game_info.append({f'g{game}': score})
-        print(res_game_info)
-        g = game-1 if game <= 3 else 3
-        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{last_score-1}/info.json", 'r') as score_json:
-            dict = json.load(score_json)
-        dict['winner'] = True if top_bot_score[0] > top_bot_score[1] else False
-        if dict['winner']:
-            top_bot_score[0] += 1
-            dict['top bot score'] = top_bot_score
-        else:
-            top_bot_score[1] += 1
-            dict['top bot score'] = top_bot_score
-        with open(f"{self.base}/outputs/{self.vid_name}/game_{g}_score_{last_score-1}/info.json",'w') as f:
-            json.dump(dict, f, indent=2)
-
-        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json",'w') as f:
-            json.dump(res_game_info, f, indent=2)
-
         print(f"Second cost: {round(time.time() - self.start_time, 1)}")
         print(f'Frame count:{frame_count}')
         print(f'Save count:{saved_count}')
         print(f'Score: {score}')
+
+        # last score
+        res_game_info.append({f'g{game}': score})
+        print(res_game_info, len(res_game_info))
+
+        top_bot_score = update_score(self.base, self.vid_name, len(res_game_info), score - 1,
+                                     None, top_bot_score, flip)
+        print(top_bot_score)
+
+        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json",'w') as f:
+            json.dump({'games':res_game_info}, f, indent=2)
 
         with open('csv_records/pipeline_video_data.csv', 'a', newline='') as csvfile:
             fieldnames = ['vid_name', 'total_frame_count', 'total_saved_count', 'saved_count', 'score',
