@@ -1,4 +1,6 @@
 import copy, csv, cv2, json, time, numpy as np, matplotlib
+import shutil
+
 from PIL import Image
 import torch, torchvision
 from torchvision.transforms import transforms
@@ -162,7 +164,9 @@ class video_resolver:
         self.transform = transforms.Compose([transforms.ToTensor()])
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.paths = [f"{self.base}/outputs",
-                      f"{self.base}/outputs/{self.vid_name}"]
+                      f"{self.base}/outputs/eliminated",
+                      f"{self.base}/outputs/{self.vid_name}",
+                      f"{self.base}/outputs/eliminated/{self.vid_name}"]
 
         for path in self.paths:
             check_dir(path)
@@ -323,6 +327,7 @@ class video_resolver:
                                         end_frame = frame_count
 
                                     store_path = f"{self.base}/outputs/{self.vid_name}/game_{game}_score_{score}"
+                                    eli_path = f"{self.base}/outputs/eliminated/{self.vid_name}/game_{game}_score_{score}"
                                     check_dir(store_path)
 
                                     start_time = parse_time(FPS, start_frame)
@@ -391,9 +396,12 @@ class video_resolver:
                                         if success:
                                             print(f'Finish score_{score}')
                                         score += 1
+                                        one_count = 0
+                                    else:  # all 0
+                                        shutil.move(store_path, eli_path)
+
                                     joint_list = []
                                     joint_img_list = []
-                                    one_count = 0
                             last_type = p
                         if p == 1:
                             # check if next game starts
