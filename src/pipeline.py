@@ -397,6 +397,12 @@ class video_resolver:
                                         score += 1
                                         one_count = 0
                                     else:  # all 0
+                                        out = cv2.VideoWriter(f"{store_path}/video.mp4",
+                                                              cv2.VideoWriter_fourcc(*'mp4v'), int(FPS / frame_rate),
+                                                              (frame_width, frame_height))
+                                        for img in joint_img_list:
+                                            out.write(img)
+                                        out.release()
                                         shutil.move(store_path, eli_path)
                                     joint_list = []
                                     joint_img_list = []
