@@ -46,7 +46,6 @@ def check_pos_and_score(d_list, joint_list, mp, top_bot_score):
 
 def get_original_data(path):
     data_x = []
-    # vid_name = path.split('/')[-3]
     with open(path, 'r') as score_json:
         frame_dict = json.load(score_json)
 
@@ -74,11 +73,8 @@ def get_data(path, sc_root='model_weights/scaler_12.pickle'):
     sc = pickle.load(open(sc_root, 'rb'))
     c_count = 0
     n_count = 0
-
     data_x = []
-
-    vid_name = path.split('/')[-3]
-
+    # vid_name = path.split('/')[-3]
     with open(path, 'r') as score_json:
         frame_dict = json.load(score_json)
 

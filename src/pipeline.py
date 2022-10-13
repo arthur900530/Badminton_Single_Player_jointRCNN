@@ -1,6 +1,5 @@
 import copy, csv, cv2, json, time, numpy as np, matplotlib
 import shutil
-
 from PIL import Image
 import torch, torchvision
 from torchvision.transforms import transforms
@@ -338,7 +337,7 @@ class video_resolver:
                                     with open(joint_save_path, 'w') as f:
                                         json.dump(framesDict, f, indent=2)
 
-                                    joint_list = torch.tensor(np.array(transformer_utils.get_data(joint_save_path)), dtype=torch.float32).to(self.device)
+                                    joint_list = torch.tensor(np.array(transformer_utils.get_data(joint_save_path, 'model_weights/scaler_ultimate_2.pickle')), dtype=torch.float32).to(self.device)
                                     orig_joint_list = np.squeeze(np.array(transformer_utils.get_original_data(joint_save_path)), axis=0)
 
                                     shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
@@ -399,7 +398,6 @@ class video_resolver:
                                         one_count = 0
                                     else:  # all 0
                                         shutil.move(store_path, eli_path)
-
                                     joint_list = []
                                     joint_img_list = []
                             last_type = p
@@ -484,13 +482,3 @@ class video_resolver:
                 'execution_time(sec)': round(time.time() - self.start_time, 1)
             })
         return True
-
-
-paths = get_path('E:/test_videos/inputs')
-vid_paths = []
-for path in paths:
-    if path.split('/')[-1].split('.')[-1] == 'mp4':
-        vid_paths.append(path)
-for vid_path in vid_paths:
-    vpr = video_resolver(vid_path, output_base='E:/test_videos')    # output base is where "outputs" dir is
-    vpr.resolve()
