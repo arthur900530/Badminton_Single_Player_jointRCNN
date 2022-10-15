@@ -324,7 +324,6 @@ class video_resolver:
                                     if not start_recording:
                                         start_recording = True
                                         end_frame = frame_count
-
                                     store_path = f"{self.base}/outputs/{self.vid_name}/game_{game}_score_{score}"
                                     eli_path = f"{self.base}/outputs/eliminated/{self.vid_name}/game_{game}_score_{score}"
                                     check_dir(store_path)
@@ -346,7 +345,7 @@ class video_resolver:
                                     for d in shuttle_direction:
                                         if d == 0:
                                             dz_count += 1
-                                    if dz_count/len(shuttle_direction) < 0.9:
+                                    if dz_count / len(shuttle_direction) < 0.9:
                                         # correct = transformer_utils.check_pos_and_score(shuttle_direction, orig_joint_list, self.multi_points, top_bot_score)
                                         # print('Score correct...') if correct else print('Wrong score...')
                                         shot_list, move_dir_list = check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
@@ -395,7 +394,6 @@ class video_resolver:
                                         if success:
                                             print(f'Finish score_{score}')
                                         score += 1
-                                        one_count = 0
                                     else:  # all 0
                                         out = cv2.VideoWriter(f"{store_path}/video.mp4",
                                                               cv2.VideoWriter_fourcc(*'mp4v'), int(FPS / frame_rate),
@@ -404,8 +402,9 @@ class video_resolver:
                                             out.write(img)
                                         out.release()
                                         shutil.move(store_path, eli_path)
-                                    joint_list = []
-                                    joint_img_list = []
+                                one_count = 0
+                                joint_list = []
+                                joint_img_list = []
                             last_type = p
                         if p == 1:
                             # check if next game starts
