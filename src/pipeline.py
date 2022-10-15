@@ -194,11 +194,7 @@ class video_resolver:
     def draw_key_points(self, outputs, image):
         edges = [(0, 1), (0, 2), (2, 4), (1, 3), (6, 8), (8, 10), (11, 12), (5, 7),
                  (7, 9), (5, 11), (11, 13), (13, 15), (6, 12), (12, 14), (14, 16), (5, 6)]
-        # bounds = get_area_bound(self.court_points)
-        color1 = (217, 146, 65)
-        color2 = (90, 31, 255)
-        color3 = (90, 48, 0)
-        color4 = (66, 6, 219)
+
         playerJoints = []
         b = outputs[0]['boxes'].cpu().detach().numpy()
         j = outputs[0]['keypoints'].cpu().detach().numpy()
@@ -208,36 +204,22 @@ class video_resolver:
 
         fit, combination = check_pos(self.court_info[4], topScores, b)
 
-        top, bot = top_bottom([j[topScores[combination[0]]], j[topScores[combination[1]]]])
-
         if fit:
             for c in combination:
-                if c == top:
-                    color = color1
-                    sub_color = color3
-                else:
-                    color = color2
-                    sub_color = color4
                 i = topScores[c]
                 keypoints = j[i]
-                box = b[i]
                 # print(box, box[2])
                 keypoints = keypoints[:, :].reshape(-1, 3)
                 playerJoints.append(j[i].tolist())
                 overlay = image.copy()
 
-                # court bound point
-                # for bound in bounds:
-                #     cv2.circle(overlay, tuple((int(frame_width / 2 - 2), int(bound[0]))), 5, (255, 255, 0), 10)
-                #     cv2.circle(overlay, tuple((int(frame_width / 2 - 2), int(bound[1]))), 5, (255, 255, 0), 10)
-
-                c_edges = [[0, 1],[0, 5],[1, 2],[1, 6],[2, 3],[2, 7],[3, 4],[3, 8],[4, 9],
-                           [5, 6],[5, 10],[6, 7],[6, 11],[7, 8],[7, 12],[8, 9],[8, 13],[9, 14],
-                           [10, 11],[10, 15],[11, 12],[11, 16],[12, 13],[12, 17],[13, 14],[13, 18],
-                           [14, 19],[15, 16],[15, 20],[16, 17],[16, 21],[17, 18],[17, 22],[18, 19],
-                           [18, 23],[19, 24],[20, 21],[20, 25],[21, 22],[21, 26],[22, 23],[22, 27],
-                           [23, 24],[23, 28],[24, 29],[25, 26],[25, 30],[26, 27],[26, 31],[27, 28],
-                           [27, 32],[28, 29],[28, 33],[29, 34],[30,31],[31,32],[32,33],[33,34]]
+                c_edges = [[0, 1], [0, 5], [1, 2], [1, 6], [2, 3], [2, 7], [3, 4], [3, 8], [4, 9],
+                           [5, 6], [5, 10], [6, 7], [6, 11], [7, 8], [7, 12], [8, 9], [8, 13], [9, 14],
+                           [10, 11], [10, 15], [11, 12], [11, 16], [12, 13], [12, 17], [13, 14], [13, 18],
+                           [14, 19], [15, 16], [15, 20], [16, 17], [16, 21], [17, 18], [17, 22], [18, 19],
+                           [18, 23], [19, 24], [20, 21], [20, 25], [21, 22], [21, 26], [22, 23], [22, 27],
+                           [23, 24], [23, 28], [24, 29], [25, 26], [25, 30], [26, 27], [26, 31], [27, 28],
+                           [27, 32], [28, 29], [28, 33], [29, 34], [30, 31], [31, 32], [32, 33], [33, 34]]
                 for e in c_edges:
                     cv2.line(overlay, (int(self.multi_points[e[0]][0]), int(self.multi_points[e[0]][1])),
                              (int(self.multi_points[e[1]][0]), int(self.multi_points[e[1]][1])),
@@ -246,24 +228,12 @@ class video_resolver:
                 for kps in [self.multi_points]:
                     for idx, kp in enumerate(kps):
                         cv2.circle(overlay, tuple(kp), 2, (5, 135, 242), 10)
-
-                # cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
-                #             (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
-                #             0, 0, 360, color, 15)
-                # cv2.ellipse(overlay, (int((box[2] + box[0]) / 2), int(box[3])),
-                #             (int((box[2] - box[0]) / 1.8), int((box[3] - box[1]) / 10)),
-                #             0, int(((one_count - 1) * 10)),
-                #             int((30 + (one_count - 1) * 10)), sub_color, 6)
-
                 alpha = 0.4
                 image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
                 for p in range(keypoints.shape[0]):
                     cv2.circle(image, (int(keypoints[p, 0]), int(keypoints[p, 1])), 3, (0, 0, 255), thickness=-1,
                                lineType=cv2.FILLED)
-                    # cv2.putText(image, str(i), (int(keypoints[15, 0]), int(keypoints[15, 1])), cv2.FONT_HERSHEY_DUPLEX,
-                    #             1, (0, 255, 255), 1,
-                    #             cv2.LINE_AA)
                 for ie, e in enumerate(edges):
                     # get different colors for the edges
                     rgb = matplotlib.colors.hsv_to_rgb([ie / float(len(edges)), 1.0, 1.0])
@@ -336,8 +306,11 @@ class video_resolver:
                                     with open(joint_save_path, 'w') as f:
                                         json.dump(framesDict, f, indent=2)
 
-                                    joint_list = torch.tensor(np.array(transformer_utils.get_data(joint_save_path, 'model_weights/scaler_ultimate_2.pickle')), dtype=torch.float32).to(self.device)
-                                    orig_joint_list = np.squeeze(np.array(transformer_utils.get_original_data(joint_save_path)), axis=0)
+                                    joint_list = torch.tensor(np.array(transformer_utils.get_data(joint_save_path,
+                                                                                                  'model_weights/scaler_ultimate_2.pickle')),
+                                                              dtype=torch.float32).to(self.device)
+                                    orig_joint_list = np.squeeze(
+                                        np.array(transformer_utils.get_original_data(joint_save_path)), axis=0)
 
                                     shuttle_direction = transformer_utils.predict(self.bsp_model, joint_list).tolist()
                                     print(shuttle_direction)
@@ -348,7 +321,9 @@ class video_resolver:
                                     if dz_count / len(shuttle_direction) < 0.9:
                                         # correct = transformer_utils.check_pos_and_score(shuttle_direction, orig_joint_list, self.multi_points, top_bot_score)
                                         # print('Score correct...') if correct else print('Wrong score...')
-                                        shot_list, move_dir_list = check_hit_frame(shuttle_direction, orig_joint_list, self.true_court_points, self.multi_points)
+                                        shot_list, move_dir_list = check_hit_frame(shuttle_direction, orig_joint_list,
+                                                                                   self.true_court_points,
+                                                                                   self.multi_points)
                                         print(shot_list, move_dir_list)
                                         offensive, pos = type_classify(shot_list)
 
@@ -372,21 +347,22 @@ class video_resolver:
                                             top_bot_score = update_score(self.base, self.vid_name, game, score - 1,
                                                                          shuttle_direction, top_bot_score, flip)
                                         if score == 0 and game != 1:
-                                            top_bot_score = update_score(self.base, self.vid_name, game - 1, last_score - 1,
+                                            top_bot_score = update_score(self.base, self.vid_name, game - 1,
+                                                                         last_score - 1,
                                                                          shuttle_direction, top_bot_score, flip)
                                         info_dict = {
-                                            'id':None,
-                                            'game':game,
-                                            'score':score,
-                                            'time':[start_time, end_time],
-                                            'long rally':True if len(shot_list) > 15 else False,
-                                            'shuttle direction':shuttle_direction,
-                                            'shot list':shot_list,
-                                            'move direction list':move_dir_list,
-                                            'top player type':top_type,
+                                            'id': None,
+                                            'game': game,
+                                            'score': score,
+                                            'time': [start_time, end_time],
+                                            'long rally': True if len(shot_list) > 15 else False,
+                                            'shuttle direction': shuttle_direction,
+                                            'shot list': shot_list,
+                                            'move direction list': move_dir_list,
+                                            'top player type': top_type,
                                             'bot player type': bot_type,
-                                            'winner':None,
-                                            'top bot score':top_bot_score
+                                            'winner': None,
+                                            'top bot score': top_bot_score
                                         }
                                         info_save_path = f"{store_path}/info.json"
                                         with open(info_save_path, 'w') as f:
@@ -402,6 +378,7 @@ class video_resolver:
                                             out.write(img)
                                         out.release()
                                         shutil.move(store_path, eli_path)
+                                print('clear')
                                 one_count = 0
                                 joint_list = []
                                 joint_img_list = []
@@ -409,7 +386,7 @@ class video_resolver:
                         if p == 1:
                             # check if next game starts
                             if zero_count != 0 and 1100 < zero_count < 1500 and score != 0 and game < 3:
-                                res_game_info.append({f'g{game}':score})
+                                res_game_info.append({f'g{game}': score})
                                 last_score = score
                                 game += 1
                                 score = 0
@@ -471,8 +448,8 @@ class video_resolver:
                                      None, top_bot_score, flip)
         print(top_bot_score)
 
-        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json",'w') as f:
-            json.dump({'games':res_game_info}, f, indent=2)
+        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'w') as f:
+            json.dump({'games': res_game_info}, f, indent=2)
 
         with open('csv_records/pipeline_video_data.csv', 'a', newline='') as csvfile:
             fieldnames = ['vid_name', 'total_frame_count', 'total_saved_count', 'saved_count', 'score',
