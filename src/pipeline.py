@@ -285,10 +285,7 @@ class video_resolver:
                         if p != last_type:
                             correct = check_type(last_type, wait_list)
                             if not correct:
-                                if p == 1:
-                                    p = 0
-                                else:
-                                    p = 1
+                                p = 0 if p == 1 else 1
                             if p == 0:
                                 if len(joint_list) / one_count > 0.6 and one_count > 25:  # 25 is changable
                                     if not start_recording:
@@ -427,8 +424,8 @@ class video_resolver:
                             joint_img_list.append(output_image)
                         else:
                             zero_count += 1
-                        saved_count += 1
-                        print(saved_count, ' / ', total_saved_count)
+                    saved_count += 1
+                    print(saved_count, ' / ', total_saved_count)
                 frame_count += 1
             else:
                 break
