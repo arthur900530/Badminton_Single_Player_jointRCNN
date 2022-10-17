@@ -63,12 +63,12 @@ def score_rank(court_info, court_points, joints):
 
 
 # check if up court and bot court got player
-def check_pos(court_mp, indexes, boxes):
-    for i in range(len(indexes)):
+def check_pos(court_mp, indices, boxes):
+    for i in range(len(indices)):
         combination = 1
-        if boxes[indexes[0]][1] < court_mp < boxes[indexes[combination]][3]:
+        if boxes[indices[0]][1] < court_mp < boxes[indices[combination]][3]:
             return True, [0, combination]
-        elif boxes[indexes[0]][3] > court_mp > boxes[indexes[combination]][1]:
+        elif boxes[indices[0]][3] > court_mp > boxes[indices[combination]][1]:
             return True, [0, combination]
         else:
             combination += 1
@@ -191,26 +191,33 @@ class video_resolver:
         if not self.cap.isOpened():
             print('Error while trying to read video. Please check path again')
 
-    def draw_key_points(self, outputs, image):
+    def draw_key_points(self, outputs, image, flip):
         edges = [(0, 1), (0, 2), (2, 4), (1, 3), (6, 8), (8, 10), (11, 12), (5, 7),
                  (7, 9), (5, 11), (11, 13), (13, 15), (6, 12), (12, 14), (14, 16), (5, 6)]
 
-        playerJoints = []
         b = outputs[0]['boxes'].cpu().detach().numpy()
         j = outputs[0]['keypoints'].cpu().detach().numpy()
-        topScores = score_rank(self.court_info, self.court_points, j)
-        if topScores == False:
-            return image, True
-
-        fit, combination = check_pos(self.court_info[4], topScores, b)
-
+        in_court_indices = score_rank(self.court_info, self.court_points, j)
+        filtered_joint = []
+        if in_court_indices == False:
+            return image, None
+        fit, combination = check_pos(self.court_info[4], in_court_indices, b)
+        filtered_joint.append(j[in_court_indices[combination[0]]].tolist())
+        filtered_joint.append(j[in_court_indices[combination[1]]].tolist())
+        # filtered_joint = np.array(filtered_joint)
+        pos = top_bottom(filtered_joint)
+        # top: blue, bot: red
+        top_color = (255, 0, 0)
+        bot_color = (0, 0, 255)
         if fit:
-            for c in combination:
-                i = topScores[c]
-                keypoints = j[i]
-                # print(box, box[2])
+            for i in range(2):
+                p = pos[i]
+                if not flip:
+                    color = top_color if i == 0 else bot_color
+                else:
+                    color = bot_color if i == 0 else top_color
+                keypoints = np.array(filtered_joint[p])  # 17, 3
                 keypoints = keypoints[:, :].reshape(-1, 3)
-                playerJoints.append(j[i].tolist())
                 overlay = image.copy()
 
                 c_edges = [[0, 1], [0, 5], [1, 2], [1, 6], [2, 3], [2, 7], [3, 4], [3, 8], [4, 9],
@@ -220,6 +227,7 @@ class video_resolver:
                            [18, 23], [19, 24], [20, 21], [20, 25], [21, 22], [21, 26], [22, 23], [22, 27],
                            [23, 24], [23, 28], [24, 29], [25, 26], [25, 30], [26, 27], [26, 31], [27, 28],
                            [27, 32], [28, 29], [28, 33], [29, 34], [30, 31], [31, 32], [32, 33], [33, 34]]
+                # draw the court
                 for e in c_edges:
                     cv2.line(overlay, (int(self.multi_points[e[0]][0]), int(self.multi_points[e[0]][1])),
                              (int(self.multi_points[e[1]][0]), int(self.multi_points[e[1]][1])),
@@ -232,19 +240,20 @@ class video_resolver:
                 image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
                 for p in range(keypoints.shape[0]):
-                    cv2.circle(image, (int(keypoints[p, 0]), int(keypoints[p, 1])), 3, (0, 0, 255), thickness=-1,
+                    cv2.circle(image, (int(keypoints[p, 0]), int(keypoints[p, 1])), 3, color, thickness=-1,
                                lineType=cv2.FILLED)
+
                 for ie, e in enumerate(edges):
                     # get different colors for the edges
-                    rgb = matplotlib.colors.hsv_to_rgb([ie / float(len(edges)), 1.0, 1.0])
-                    rgb = rgb * 255
+                    # rgb = matplotlib.colors.hsv_to_rgb([ie / float(len(edges)), 1.0, 1.0])
+                    # rgb = rgb * 255
                     # join the keypoint pairs to draw the skeletal structure
                     cv2.line(image, (int(keypoints[e, 0][0]), int(keypoints[e, 1][0])),
                              (int(keypoints[e, 0][1]), int(keypoints[e, 1][1])),
-                             tuple(rgb), 2, lineType=cv2.LINE_AA)
-            return image, playerJoints
+                             color, 2, lineType=cv2.LINE_AA)
+            return image, filtered_joint
         else:
-            return image, True
+            return image, None
 
     def resolve(self):
         frame_width = int(self.cap.get(3))
@@ -287,6 +296,7 @@ class video_resolver:
                             if not correct:
                                 p = 0 if p == 1 else 1
                             if p == 0:
+                                print(len(joint_list) / one_count, one_count)
                                 if len(joint_list) / one_count > 0.6 and one_count > 25:  # 25 is changable
                                     if not start_recording:
                                         start_recording = True
@@ -412,9 +422,9 @@ class video_resolver:
                             image = image.unsqueeze(0).to(self.device)
                             with torch.no_grad():
                                 outputs = self.model(image)
-                            output_image, player_joints = self.draw_key_points(outputs, frame)
+                            output_image, player_joints = self.draw_key_points(outputs, frame, flip)
 
-                            if player_joints != True:
+                            if player_joints is not None:
                                 for points in player_joints:
                                     for i, joints in enumerate(points):
                                         points[i] = joints[0:2]
