@@ -194,6 +194,13 @@ class video_resolver:
     def draw_key_points(self, outputs, image, flip):
         edges = [(0, 1), (0, 2), (2, 4), (1, 3), (6, 8), (8, 10), (11, 12), (5, 7),
                  (7, 9), (5, 11), (11, 13), (13, 15), (6, 12), (12, 14), (14, 16), (5, 6)]
+        c_edges = [[0, 1], [0, 5], [1, 2], [1, 6], [2, 3], [2, 7], [3, 4], [3, 8], [4, 9],
+                   [5, 6], [5, 10], [6, 7], [6, 11], [7, 8], [7, 12], [8, 9], [8, 13], [9, 14],
+                   [10, 11], [10, 15], [11, 12], [11, 16], [12, 13], [12, 17], [13, 14], [13, 18],
+                   [14, 19], [15, 16], [15, 20], [16, 17], [16, 21], [17, 18], [17, 22], [18, 19],
+                   [18, 23], [19, 24], [20, 21], [20, 25], [21, 22], [21, 26], [22, 23], [22, 27],
+                   [23, 24], [23, 28], [24, 29], [25, 26], [25, 30], [26, 27], [26, 31], [27, 28],
+                   [27, 32], [28, 29], [28, 33], [29, 34], [30, 31], [31, 32], [32, 33], [33, 34]]
 
         b = outputs[0]['boxes'].cpu().detach().numpy()
         j = outputs[0]['keypoints'].cpu().detach().numpy()
@@ -207,26 +214,22 @@ class video_resolver:
         # filtered_joint = np.array(filtered_joint)
         pos = top_bottom(filtered_joint)
         # top: blue, bot: red
-        top_color = (255, 0, 0)
-        bot_color = (0, 0, 255)
+        top_color_1 = (255, 0, 0)
+        bot_color_1 = (0, 0, 255)
+        top_color_joint = (115, 47, 14)
+        bot_color_joint = (35, 47, 204)
         if fit:
             for i in range(2):
                 p = pos[i]
                 if not flip:
-                    color = top_color if i == 0 else bot_color
+                    color = top_color_1 if i == 0 else bot_color_1
+                    color_joint = top_color_joint if i == 0 else bot_color_joint
                 else:
-                    color = bot_color if i == 0 else top_color
+                    color = bot_color_1 if i == 0 else top_color_1
+                    color_joint = bot_color_joint if i == 0 else top_color_joint
                 keypoints = np.array(filtered_joint[p])  # 17, 3
                 keypoints = keypoints[:, :].reshape(-1, 3)
                 overlay = image.copy()
-
-                c_edges = [[0, 1], [0, 5], [1, 2], [1, 6], [2, 3], [2, 7], [3, 4], [3, 8], [4, 9],
-                           [5, 6], [5, 10], [6, 7], [6, 11], [7, 8], [7, 12], [8, 9], [8, 13], [9, 14],
-                           [10, 11], [10, 15], [11, 12], [11, 16], [12, 13], [12, 17], [13, 14], [13, 18],
-                           [14, 19], [15, 16], [15, 20], [16, 17], [16, 21], [17, 18], [17, 22], [18, 19],
-                           [18, 23], [19, 24], [20, 21], [20, 25], [21, 22], [21, 26], [22, 23], [22, 27],
-                           [23, 24], [23, 28], [24, 29], [25, 26], [25, 30], [26, 27], [26, 31], [27, 28],
-                           [27, 32], [28, 29], [28, 33], [29, 34], [30, 31], [31, 32], [32, 33], [33, 34]]
                 # draw the court
                 for e in c_edges:
                     cv2.line(overlay, (int(self.multi_points[e[0]][0]), int(self.multi_points[e[0]][1])),
@@ -240,7 +243,7 @@ class video_resolver:
                 image = cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
                 for p in range(keypoints.shape[0]):
-                    cv2.circle(image, (int(keypoints[p, 0]), int(keypoints[p, 1])), 3, color, thickness=-1,
+                    cv2.circle(image, (int(keypoints[p, 0]), int(keypoints[p, 1])), 3, color_joint, thickness=-1,
                                lineType=cv2.FILLED)
 
                 for ie, e in enumerate(edges):
