@@ -360,6 +360,45 @@ class video_resolver:
                                             top_bot_score = update_score(self.base, self.vid_name, game - 1,
                                                                          last_score - 1,
                                                                          shuttle_direction, top_bot_score, flip)
+                                        first_dir = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+
+                                        if not flip and first_dir:
+                                            bsv = True
+                                        elif flip and not first_dir:
+                                            bsv = True
+                                        else:
+                                            bsv = False
+                                        b_shot_dict = {
+                                            '長球': 0,
+                                            '切球': 0,
+                                            '殺球': 0,
+                                            '挑球': 0,
+                                            '小球': 0,
+                                            '平球': 0,
+                                            '撲球': 0,
+                                        }
+                                        r_shot_dict = {
+                                            '長球': 0,
+                                            '切球': 0,
+                                            '殺球': 0,
+                                            '挑球': 0,
+                                            '小球': 0,
+                                            '平球': 0,
+                                            '撲球': 0,
+                                        }
+                                        for shot in shot_list:
+                                            type = shot[0]
+                                            if not flip:
+                                                if shot[3]:
+                                                    b_shot_dict[type.split(' ')[-1]] += 1
+                                                else:
+                                                    r_shot_dict[type.split(' ')[-1]] += 1
+                                            else:
+                                                if shot[3]:
+                                                    r_shot_dict[type.split(' ')[-1]] += 1
+                                                else:
+                                                    b_shot_dict[type.split(' ')[-1]] += 1
+
                                         info_dict = {
                                             'id': None,
                                             'game': game,
@@ -368,6 +407,9 @@ class video_resolver:
                                             'long rally': True if len(shot_list) > 15 else False,
                                             'shuttle direction': shuttle_direction,
                                             'shot list': shot_list,
+                                            'blue shot dict': b_shot_dict,
+                                            'red shot dict': r_shot_dict,
+                                            'blue serve first': bsv,
                                             'move direction list': move_dir_list,
                                             'top player type': top_type,
                                             'bot player type': bot_type,

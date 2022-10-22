@@ -12,8 +12,8 @@ def main():
             vid_paths.append(path)
     for vid_path in vid_paths:
         vpr = video_resolver(vid_path, output_base='E:/test_videos')  # output base is where "outputs" dir is
-        vpr.resolve()
-
+        success = vpr.resolve()
+        print(success)
 
 if __name__ == '__main__':
     main()
