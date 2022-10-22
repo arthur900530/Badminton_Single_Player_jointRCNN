@@ -125,9 +125,11 @@ def get_court_info(frame_height, court_kp_model, court_kp_model_old, img):
 
 
 # update the score using the serving player of next score
-def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, flip):
+def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, flip, win_loss_dicts):
     with open(f"{base}/outputs/{vid_name}/game_{game}_score_{score}/info.json", 'r') as score_json:
         dict = json.load(score_json)
+        shot_list = dict['shot list']
+        bsv = dict['blue serve first']
     if shuttle_direction is not None:
         if 1 in shuttle_direction and 2 in shuttle_direction:
             winner = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
@@ -140,18 +142,39 @@ def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, 
         winner = True if top_bot_score[0] > top_bot_score[1] else False
 
     dict['winner'] = winner
-
     if winner:
         dict['top bot score'][0] += 1
         top_bot_score[0] += 1
+        for i in range(len(shot_list)):
+            if bsv:
+                if i % 2 == 0:
+                    win_loss_dicts[0][shot_list[i][0].split(' ')[-1]] += 1
+                else:
+                    win_loss_dicts[3][shot_list[i][0].split(' ')[-1]] += 1
+            else:
+                if i % 2 == 0:
+                    win_loss_dicts[3][shot_list[i][0].split(' ')[-1]] += 1
+                else:
+                    win_loss_dicts[0][shot_list[i][0].split(' ')[-1]] += 1
     else:
         dict['top bot score'][1] += 1
         top_bot_score[1] += 1
+        for i in range(len(shot_list)):
+            if bsv:
+                if i % 2 == 0:
+                    win_loss_dicts[1][shot_list[i][0].split(' ')[-1]] += 1
+                else:
+                    win_loss_dicts[2][shot_list[i][0].split(' ')[-1]] += 1
+            else:
+                if i % 2 == 0:
+                    win_loss_dicts[2][shot_list[i][0].split(' ')[-1]] += 1
+                else:
+                    win_loss_dicts[1][shot_list[i][0].split(' ')[-1]] += 1
 
     with open(f"{base}/outputs/{vid_name}/game_{game}_score_{score}/info.json", 'w') as f:
         json.dump(dict, f, indent=2)
 
-    return top_bot_score
+    return top_bot_score, win_loss_dicts
 
 
 class video_resolver:
@@ -259,6 +282,106 @@ class video_resolver:
             return image, None
 
     def resolve(self):
+        b_total_shot_dict = {
+            '長球': 0,
+            '切球': 0,
+            '殺球': 0,
+            '挑球': 0,
+            '小球': 0,
+            '平球': 0,
+            '撲球': 0,
+        }
+        r_total_shot_dict = {
+            '長球': 0,
+            '切球': 0,
+            '殺球': 0,
+            '挑球': 0,
+            '小球': 0,
+            '平球': 0,
+            '撲球': 0,
+        }
+
+        b_total_move_dict = {
+            'DLBL': 0,
+            'DLBR': 0,
+            'DLFL': 0,
+            'DLFR': 0,
+            'DSBL': 0,
+            'DSBR': 0,
+            'DSFL': 0,
+            'DSFR': 0,
+            'LLB': 0,
+            'LLF': 0,
+            'LSB': 0,
+            'LSF': 0,
+            'TLL': 0,
+            'TLR': 0,
+            'TSL': 0,
+            'TSR': 0,
+            'NM': 0
+        }
+        r_total_move_dict = {
+            'DLBL': 0,
+            'DLBR': 0,
+            'DLFL': 0,
+            'DLFR': 0,
+            'DSBL': 0,
+            'DSBR': 0,
+            'DSFL': 0,
+            'DSFR': 0,
+            'LLB': 0,
+            'LLF': 0,
+            'LSB': 0,
+            'LSF': 0,
+            'TLL': 0,
+            'TLR': 0,
+            'TSL': 0,
+            'TSR': 0,
+            'NM': 0
+        }
+        # b_win_dict, b_loss_dict, r_win_dict, r_loss_dict
+        win_loss_dicts = [{
+            '長球': 0,
+            '切球': 0,
+            '殺球': 0,
+            '挑球': 0,
+            '小球': 0,
+            '平球': 0,
+            '撲球': 0,
+            '拉吊': 0,
+            '搶攻': 0
+        },{
+            '長球': 0,
+            '切球': 0,
+            '殺球': 0,
+            '挑球': 0,
+            '小球': 0,
+            '平球': 0,
+            '撲球': 0,
+            '拉吊': 0,
+            '搶攻': 0
+        },{
+            '長球': 0,
+            '切球': 0,
+            '殺球': 0,
+            '挑球': 0,
+            '小球': 0,
+            '平球': 0,
+            '撲球': 0,
+            '拉吊': 0,
+            '搶攻': 0
+        },{
+            '長球': 0,
+            '切球': 0,
+            '殺球': 0,
+            '挑球': 0,
+            '小球': 0,
+            '平球': 0,
+            '撲球': 0,
+            '拉吊': 0,
+            '搶攻': 0
+        }]
+
         frame_width = int(self.cap.get(3))
         frame_height = int(self.cap.get(4))
         frame_count, saved_count = 1, 0
@@ -354,12 +477,12 @@ class video_resolver:
                                             bot_type = False
 
                                         if score != 0:
-                                            top_bot_score = update_score(self.base, self.vid_name, game, score - 1,
-                                                                         shuttle_direction, top_bot_score, flip)
+                                            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, game, score - 1,
+                                                                         shuttle_direction, top_bot_score, flip, win_loss_dicts)
                                         if score == 0 and game != 1:
-                                            top_bot_score = update_score(self.base, self.vid_name, game - 1,
+                                            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, game - 1,
                                                                          last_score - 1,
-                                                                         shuttle_direction, top_bot_score, flip)
+                                                                         shuttle_direction, top_bot_score, flip, win_loss_dicts)
                                         first_dir = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
 
                                         if not flip and first_dir:
@@ -386,18 +509,75 @@ class video_resolver:
                                             '平球': 0,
                                             '撲球': 0,
                                         }
+                                        b_move_dict = {
+                                            'DLBL': 0,
+                                            'DLBR': 0,
+                                            'DLFL': 0,
+                                            'DLFR': 0,
+                                            'DSBL': 0,
+                                            'DSBR': 0,
+                                            'DSFL': 0,
+                                            'DSFR': 0,
+                                            'LLB': 0,
+                                            'LLF': 0,
+                                            'LSB': 0,
+                                            'LSF': 0,
+                                            'TLL': 0,
+                                            'TLR': 0,
+                                            'TSL': 0,
+                                            'TSR': 0,
+                                            'NM': 0
+                                        }
+                                        r_move_dict = {
+                                            'DLBL': 0,
+                                            'DLBR': 0,
+                                            'DLFL': 0,
+                                            'DLFR': 0,
+                                            'DSBL': 0,
+                                            'DSBR': 0,
+                                            'DSFL': 0,
+                                            'DSFR': 0,
+                                            'LLB': 0,
+                                            'LLF': 0,
+                                            'LSB': 0,
+                                            'LSF': 0,
+                                            'TLL': 0,
+                                            'TLR': 0,
+                                            'TSL': 0,
+                                            'TSR': 0,
+                                            'NM': 0
+                                        }
                                         for shot in shot_list:
                                             type = shot[0]
                                             if not flip:
                                                 if shot[3]:
                                                     b_shot_dict[type.split(' ')[-1]] += 1
+                                                    b_total_shot_dict[type.split(' ')[-1]] += 1
                                                 else:
                                                     r_shot_dict[type.split(' ')[-1]] += 1
+                                                    r_total_shot_dict[type.split(' ')[-1]] += 1
                                             else:
                                                 if shot[3]:
                                                     r_shot_dict[type.split(' ')[-1]] += 1
+                                                    r_total_shot_dict[type.split(' ')[-1]] += 1
                                                 else:
                                                     b_shot_dict[type.split(' ')[-1]] += 1
+                                                    b_total_shot_dict[type.split(' ')[-1]] += 1
+                                        for move in move_dir_list:
+                                            if not flip:
+                                                if move[1]:
+                                                    b_total_move_dict[move[0]] += 1
+                                                    b_move_dict[move[0]] += 1
+                                                else:
+                                                    r_total_move_dict[move[0]] += 1
+                                                    r_move_dict[move[0]] += 1
+                                            else:
+                                                if move[1]:
+                                                    r_total_move_dict[move[0]] += 1
+                                                    r_move_dict[move[0]] += 1
+                                                else:
+                                                    b_total_move_dict[move[0]] += 1
+                                                    b_move_dict[move[0]] += 1
 
                                         info_dict = {
                                             'id': None,
@@ -405,16 +585,18 @@ class video_resolver:
                                             'score': score,
                                             'time': [start_time, end_time],
                                             'long rally': True if len(shot_list) > 15 else False,
+                                            'top player type': top_type,
+                                            'bot player type': bot_type,
+                                            'winner': None,
+                                            'top bot score': top_bot_score,
                                             'shuttle direction': shuttle_direction,
                                             'shot list': shot_list,
                                             'blue shot dict': b_shot_dict,
                                             'red shot dict': r_shot_dict,
                                             'blue serve first': bsv,
                                             'move direction list': move_dir_list,
-                                            'top player type': top_type,
-                                            'bot player type': bot_type,
-                                            'winner': None,
-                                            'top bot score': top_bot_score
+                                            'blue move dict': b_move_dict,
+                                            'red move dict': r_move_dict
                                         }
                                         info_save_path = f"{store_path}/info.json"
                                         with open(info_save_path, 'w') as f:
@@ -496,12 +678,16 @@ class video_resolver:
         res_game_info.append({f'g{game}': score})
         print(res_game_info, len(res_game_info))
 
-        top_bot_score = update_score(self.base, self.vid_name, len(res_game_info), score - 1,
-                                     None, top_bot_score, flip)
+        top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info), score - 1,
+                                     None, top_bot_score, flip, win_loss_dicts)
         print(top_bot_score)
 
         with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'w') as f:
-            json.dump({'games': res_game_info}, f, indent=2)
+            json.dump({'games': res_game_info,
+                       'blue win shots': win_loss_dicts[0],
+                       'blue loss shots': win_loss_dicts[1],
+                       'red win shots': win_loss_dicts[2],
+                       'red loss shots': win_loss_dicts[3],}, f, indent=2)
 
         with open('csv_records/pipeline_video_data.csv', 'a', newline='') as csvfile:
             fieldnames = ['vid_name', 'total_frame_count', 'total_saved_count', 'saved_count', 'score',
@@ -516,3 +702,26 @@ class video_resolver:
                 'execution_time(sec)': round(time.time() - self.start_time, 1)
             })
         return True
+
+    def get_total_info(self):
+        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'r') as f:
+            frame_dict = json.load(f)
+        return frame_dict
+
+    def get_respective_score_info(self):
+        g1 = []
+        g2 = []
+        g3 = []
+        paths = get_path(f"{self.base}/outputs/{self.vid_name}")[:-1]
+        for p in paths:
+            num = int(p.split('/')[-1].split('_')[1])
+            with open(f"{p}/info.json", 'r') as f:
+                frame_dict = json.load(f)
+            if num == 1:
+                g1.append(frame_dict)
+            elif num == 2:
+                g2.append(frame_dict)
+            else:
+                g3.append(frame_dict)
+        scores_dict = {'g1':g1, 'g2':g2, 'g3':g3} if g3 else {'g1':g1, 'g2':g2}
+        return scores_dict
