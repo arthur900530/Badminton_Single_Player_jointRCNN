@@ -178,41 +178,44 @@ def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, 
 
 
 class video_resolver:
-    def __init__(self, vid_path, output_base='E:/test_videos'):
-        self.start_time = time.time()
+    def __init__(self, vid_path, output_base='E:/test_videos', isExit=False):
         self.base = output_base
         self.vid_path = vid_path
         self.vid_name = vid_path.split('/')[-1].split('.')[0]
-        self.transform = transforms.Compose([transforms.ToTensor()])
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.paths = [f"{self.base}/outputs",
-                      f"{self.base}/outputs/eliminated",
-                      f"{self.base}/outputs/{self.vid_name}",
-                      f"{self.base}/outputs/eliminated/{self.vid_name}"]
+        if not isExit:
+            print("Video haven't been resolved")
+            self.start_time = time.time()
+            self.transform = transforms.Compose([transforms.ToTensor()])
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            self.paths = [f"{self.base}/outputs",
+                          f"{self.base}/outputs/eliminated",
+                          f"{self.base}/outputs/{self.vid_name}",
+                          f"{self.base}/outputs/eliminated/{self.vid_name}"]
+            for path in self.paths:
+                check_dir(path)
 
-        for path in self.paths:
-            check_dir(path)
+            self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True, num_keypoints=17)
+            self.model.to(self.device).eval()
+            self.scene_model = scene_utils.build_model('model_weights/scene_classifier.pt', self.device)
+            self.bsp_model = transformer_utils.build_model('model_weights/weights/clean_seq_labling_ultimate_2.pt')
 
-        self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True, num_keypoints=17)
-        self.model.to(self.device).eval()
-        self.scene_model = scene_utils.build_model('model_weights/scene_classifier.pt', self.device)
-        self.bsp_model = transformer_utils.build_model('model_weights/weights/clean_seq_labling_ultimate_2.pt')
+            self.court_kp_model = torch.load('model_weights/court_kpRCNN.pth')
+            self.court_kp_model.to(self.device).eval()
 
-        self.court_kp_model = torch.load('model_weights/court_kpRCNN.pth')
-        self.court_kp_model.to(self.device).eval()
+            self.court_kp_model_old = torch.load('model_weights/court_kpRCNN_old.pth')
+            self.court_kp_model_old.to(self.device).eval()
 
-        self.court_kp_model_old = torch.load('model_weights/court_kpRCNN_old.pth')
-        self.court_kp_model_old.to(self.device).eval()
+            self.court_points = None
+            self.true_court_points = None
+            self.multi_points = None
+            self.court_info = None
 
-        self.court_points = None
-        self.true_court_points = None
-        self.multi_points = None
-        self.court_info = None
+            self.cap = cv2.VideoCapture(vid_path)
 
-        self.cap = cv2.VideoCapture(vid_path)
-
-        if not self.cap.isOpened():
-            print('Error while trying to read video. Please check path again')
+            if not self.cap.isOpened():
+                print('Error while trying to read video. Please check path again')
+        else:
+            print("Video resolved")
 
     def draw_key_points(self, outputs, image, flip):
         edges = [(0, 1), (0, 2), (2, 4), (1, 3), (6, 8), (8, 10), (11, 12), (5, 7),
@@ -692,7 +695,6 @@ class video_resolver:
 
         with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'w') as f:
             json.dump({'games': res_game_info,
-                       'top bot score': top_bot_score,
                        'blue win shots': win_loss_dicts[0],
                        'blue loss shots': win_loss_dicts[1],
                        'red win shots': win_loss_dicts[2],
@@ -723,7 +725,7 @@ class video_resolver:
             blue_total_shots[k] += frame_dict['blue loss shots'][k]
             red_total_shots[k] += frame_dict['red loss shots'][k]
         games = frame_dict['games']
-        for game in games:
+        for game in games[:-1]:
             game['top bot score'][np.argmax(game['top bot score'])] += 1
         selected_dict = {
             'games': games,
