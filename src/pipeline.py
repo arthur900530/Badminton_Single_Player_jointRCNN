@@ -489,6 +489,7 @@ class video_resolver:
                                                                                          shuttle_direction,
                                                                                          top_bot_score, flip,
                                                                                          win_loss_dicts)
+
                                         first_dir = True if shuttle_direction.index(1) < shuttle_direction.index(
                                             2) else False
 
@@ -627,7 +628,7 @@ class video_resolver:
                         if p == 1:
                             # check if next game starts
                             if zero_count != 0 and 1100 < zero_count < 1500 and score != 0 and game < 3:
-                                res_game_info.append({f'g{game}': score})
+                                res_game_info.append({f'g{game}': score, 'top bot score': top_bot_score})
                                 last_score = score
                                 game += 1
                                 score = 0
@@ -682,7 +683,7 @@ class video_resolver:
         print(f'Score: {score}')
 
         # last score
-        res_game_info.append({f'g{game}': score})
+        res_game_info.append({f'g{game}': score, 'top bot score': top_bot_score})
         print(res_game_info, len(res_game_info))
 
         top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info), score - 1,
@@ -691,6 +692,7 @@ class video_resolver:
 
         with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'w') as f:
             json.dump({'games': res_game_info,
+                       'top bot score': top_bot_score,
                        'blue win shots': win_loss_dicts[0],
                        'blue loss shots': win_loss_dicts[1],
                        'red win shots': win_loss_dicts[2],
@@ -715,7 +717,26 @@ class video_resolver:
     def get_total_info(self):
         with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'r') as f:
             frame_dict = json.load(f)
-        return frame_dict
+        blue_total_shots = copy.deepcopy(frame_dict['blue win shots'])
+        red_total_shots = copy.deepcopy(frame_dict['red win shots'])
+        for k in frame_dict['blue win shots'].keys():
+            blue_total_shots[k] += frame_dict['blue loss shots'][k]
+            red_total_shots[k] += frame_dict['red loss shots'][k]
+        games = frame_dict['games']
+        for game in games:
+            game['top bot score'][np.argmax(game['top bot score'])] += 1
+        selected_dict = {
+            'games': games,
+            'blue_total_shots': count_percentage(blue_total_shots),
+            'red_total_shots': count_percentage(red_total_shots),
+            'blue win shots': count_percentage(frame_dict['blue win shots']),
+            'blue loss shots': count_percentage(frame_dict['blue loss shots']),
+            'red win shots': count_percentage(frame_dict['red win shots']),
+            'red loss shots': count_percentage(frame_dict['red loss shots']),
+            'blue total move': count_percentage(frame_dict['blue total move']),
+            'red total move': count_percentage(frame_dict['red total move']),
+        }
+        return selected_dict
 
     def get_respective_score_info(self):
         g1, g2, g3 = [], [], []
