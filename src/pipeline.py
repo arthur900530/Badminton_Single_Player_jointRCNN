@@ -694,7 +694,9 @@ class video_resolver:
                        'blue win shots': win_loss_dicts[0],
                        'blue loss shots': win_loss_dicts[1],
                        'red win shots': win_loss_dicts[2],
-                       'red loss shots': win_loss_dicts[3], }, f, indent=2)
+                       'red loss shots': win_loss_dicts[3],
+                       'blue total move': b_total_move_dict,
+                       'red total move': r_total_move_dict}, f, indent=2)
 
         with open('csv_records/pipeline_video_data.csv', 'a', newline='') as csvfile:
             fieldnames = ['vid_name', 'total_frame_count', 'total_saved_count', 'saved_count', 'score',
@@ -716,12 +718,23 @@ class video_resolver:
         return frame_dict
 
     def get_respective_score_info(self):
-        g1 = []
-        g2 = []
-        g3 = []
-        paths = get_path(f"{self.base}/outputs/{self.vid_name}")[:-1]
+        g1, g2, g3 = [], [], []
+        paths = get_path(f"{self.base}/outputs/{self.vid_name}")
+        for path in paths:
+            num = path.split('/')[-1].split('_')[1]
+            if num == '1':
+                g1.append(path)
+            elif num == '2':
+                g2.append(path)
+            elif num == '3':
+                g3.append(path)
+        g1 = sorted(g1, key=lambda i: int(i.split('/')[-1].split('_')[-1]))
+        g2 = sorted(g2, key=lambda i: int(i.split('/')[-1].split('_')[-1]))
+        g3 = sorted(g3, key=lambda i: int(i.split('/')[-1].split('_')[-1]))
+        paths = g1 + g2 + g3
+        g1, g2, g3 = [], [], []
         for p in paths:
-            num = int(p.split('/')[-1].split('_')[1])
+            num = p.split('/')[-1].split('_')[1]
             with open(f"{p}/info.json", 'r') as f:
                 frame_dict = json.load(f)
             selected_dict = {
@@ -736,11 +749,11 @@ class video_resolver:
                 'blue move dict': count_percentage(frame_dict['blue move dict']),
                 'red move dict': count_percentage(frame_dict['red move dict']),
             }
-            if num == 1:
+            if num == '1':
                 g1.append(selected_dict)
-            elif num == 2:
+            elif num == '2':
                 g2.append(selected_dict)
-            else:
+            elif num == '3':
                 g3.append(selected_dict)
         scores_dict = {'g1': g1, 'g2': g2, 'g3': g3} if g3 else {'g1': g1, 'g2': g2}
         return scores_dict

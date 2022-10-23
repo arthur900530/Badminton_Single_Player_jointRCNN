@@ -15,8 +15,8 @@ def main():
         _ = vpr.resolve()
         total_info = vpr.get_total_info()
         scores_dict = vpr.get_respective_score_info()
-        # print(total_info)
-        print(scores_dict['g1'])
+        print(total_info)
+        # print(scores_dict['g1'])
 
 if __name__ == '__main__':
     main()
