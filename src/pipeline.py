@@ -6,7 +6,7 @@ from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils, transformer_utils
 from shot_recognition import check_hit_frame, add_result, add_result2
-from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify
+from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
 
@@ -350,7 +350,7 @@ class video_resolver:
             '撲球': 0,
             '拉吊': 0,
             '搶攻': 0
-        },{
+        }, {
             '長球': 0,
             '切球': 0,
             '殺球': 0,
@@ -360,7 +360,7 @@ class video_resolver:
             '撲球': 0,
             '拉吊': 0,
             '搶攻': 0
-        },{
+        }, {
             '長球': 0,
             '切球': 0,
             '殺球': 0,
@@ -370,7 +370,7 @@ class video_resolver:
             '撲球': 0,
             '拉吊': 0,
             '搶攻': 0
-        },{
+        }, {
             '長球': 0,
             '切球': 0,
             '殺球': 0,
@@ -477,13 +477,20 @@ class video_resolver:
                                             bot_type = False
 
                                         if score != 0:
-                                            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, game, score - 1,
-                                                                         shuttle_direction, top_bot_score, flip, win_loss_dicts)
+                                            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, game,
+                                                                                         score - 1,
+                                                                                         shuttle_direction,
+                                                                                         top_bot_score, flip,
+                                                                                         win_loss_dicts)
                                         if score == 0 and game != 1:
-                                            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, game - 1,
-                                                                         last_score - 1,
-                                                                         shuttle_direction, top_bot_score, flip, win_loss_dicts)
-                                        first_dir = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name,
+                                                                                         game - 1,
+                                                                                         last_score - 1,
+                                                                                         shuttle_direction,
+                                                                                         top_bot_score, flip,
+                                                                                         win_loss_dicts)
+                                        first_dir = True if shuttle_direction.index(1) < shuttle_direction.index(
+                                            2) else False
 
                                         if not flip and first_dir:
                                             bsv = True
@@ -679,7 +686,7 @@ class video_resolver:
         print(res_game_info, len(res_game_info))
 
         top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info), score - 1,
-                                     None, top_bot_score, flip, win_loss_dicts)
+                                                     None, top_bot_score, flip, win_loss_dicts)
         print(top_bot_score)
 
         with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'w') as f:
@@ -687,7 +694,7 @@ class video_resolver:
                        'blue win shots': win_loss_dicts[0],
                        'blue loss shots': win_loss_dicts[1],
                        'red win shots': win_loss_dicts[2],
-                       'red loss shots': win_loss_dicts[3],}, f, indent=2)
+                       'red loss shots': win_loss_dicts[3], }, f, indent=2)
 
         with open('csv_records/pipeline_video_data.csv', 'a', newline='') as csvfile:
             fieldnames = ['vid_name', 'total_frame_count', 'total_saved_count', 'saved_count', 'score',
@@ -717,11 +724,23 @@ class video_resolver:
             num = int(p.split('/')[-1].split('_')[1])
             with open(f"{p}/info.json", 'r') as f:
                 frame_dict = json.load(f)
+            selected_dict = {
+                'game': frame_dict['game'],
+                'top bot score': frame_dict['top bot score'],
+                'winner': frame_dict['winner'],
+                'blue serve first': frame_dict['blue serve first'],
+                'shot list': frame_dict['shot list'],
+                'blue shot dict': frame_dict['blue shot dict'],
+                'red shot dict': frame_dict['red shot dict'],
+                'move direction list': frame_dict['move direction list'],
+                'blue move dict': count_percentage(frame_dict['blue move dict']),
+                'red move dict': count_percentage(frame_dict['red move dict']),
+            }
             if num == 1:
-                g1.append(frame_dict)
+                g1.append(selected_dict)
             elif num == 2:
-                g2.append(frame_dict)
+                g2.append(selected_dict)
             else:
-                g3.append(frame_dict)
-        scores_dict = {'g1':g1, 'g2':g2, 'g3':g3} if g3 else {'g1':g1, 'g2':g2}
+                g3.append(selected_dict)
+        scores_dict = {'g1': g1, 'g2': g2, 'g3': g3} if g3 else {'g1': g1, 'g2': g2}
         return scores_dict

@@ -4,6 +4,14 @@ import numpy as np
 
 # shot_list = [('↑ 挑球', 1, 5, False), ('↓ 長球', 5, 13, True), ('↑ 長球', 13, 19, False), ('↓ 長球', 19, 30, True), ('↑ 長球', 30, 37, False), ('↓ 切球', 37, 43, True), ('↑ 挑球', 43, 53, False), ('↓ 殺球', 53, 58, True)]
 
+def count_percentage(dict):
+    total = 0
+    for k in dict.keys():
+        total += dict[k]
+    for k in dict.keys():
+        dict[k] = np.round(dict[k] / total * 100, 2)
+    return dict
+
 def shot_match(player_shot_list, top):
     # offense_rally = [
     #     [3, 4, 1],
