@@ -6,7 +6,7 @@ from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils, transformer_utils
 from shot_recognition import check_hit_frame, add_result, add_result2
-from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage
+from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage, counts
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
 
@@ -303,7 +303,6 @@ class video_resolver:
             '平球': 0,
             '撲球': 0,
         }
-
         b_total_move_dict = {
             'DLBL': 0,
             'DLBR': 0,
@@ -780,3 +779,46 @@ class video_resolver:
                 g3.append(selected_dict)
         scores_dict = {'g1': g1, 'g2': g2, 'g3': g3} if g3 else {'g1': g1, 'g2': g2}
         return scores_dict
+
+    def get_player_strategy(self):
+        blue_win, blue_loss, red_win, red_loss = [], [], [], []
+        paths = get_path(f"{self.base}/outputs/{self.vid_name}")[:-1]
+        shot_dict = {
+            '長球': '0',
+            '切球': '1',
+            '殺球': '2',
+            '挑球': '3',
+            '小球': '4',
+            '平球': '5',
+            '撲球': '6',
+        }
+        for path in paths:
+            with open(f"{path}/info.json", 'r') as f:
+                frame_dict = json.load(f)
+            blue_shots, red_shots = [], []
+            winner = frame_dict['winner']
+            blue_serve_first = frame_dict['blue serve first']
+            shot_list = frame_dict['shot list']
+            for i in range(len(shot_list)):
+                if blue_serve_first:
+                    if i % 2 == 0:
+                        blue_shots.append(shot_list[i][0].split(' ')[-1])
+                    else:
+                        red_shots.append(shot_list[i][0].split(' ')[-1])
+                else:
+                    if i % 2 == 0:
+                        red_shots.append(shot_list[i][0].split(' ')[-1])
+                    else:
+                        blue_shots.append(shot_list[i][0].split(' ')[-1])
+            if winner:
+                blue_win.append(shot_dict[blue_shots[-3]]+shot_dict[blue_shots[-2]]+shot_dict[blue_shots[-1]])
+                red_loss.append(shot_dict[red_shots[-3]]+shot_dict[red_shots[-2]]+shot_dict[red_shots[-1]])
+            else:
+                blue_loss.append(shot_dict[blue_shots[-3]]+shot_dict[blue_shots[-2]]+shot_dict[blue_shots[-1]])
+                red_win.append(shot_dict[red_shots[-3]]+shot_dict[red_shots[-2]]+shot_dict[red_shots[-1]])
+        blue_win_dict = counts(blue_win)
+        blue_loss_dict = counts(blue_loss)
+        red_win_dict = counts(red_win)
+        red_loss_dict = counts(red_loss)
+
+        return blue_win_dict, blue_loss_dict, red_win_dict, red_loss_dict
