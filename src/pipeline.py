@@ -810,12 +810,13 @@ class video_resolver:
                         red_shots.append(shot_list[i][0].split(' ')[-1])
                     else:
                         blue_shots.append(shot_list[i][0].split(' ')[-1])
-            if winner:
-                blue_win.append(shot_dict[blue_shots[-3]]+shot_dict[blue_shots[-2]]+shot_dict[blue_shots[-1]])
-                red_loss.append(shot_dict[red_shots[-3]]+shot_dict[red_shots[-2]]+shot_dict[red_shots[-1]])
-            else:
-                blue_loss.append(shot_dict[blue_shots[-3]]+shot_dict[blue_shots[-2]]+shot_dict[blue_shots[-1]])
-                red_win.append(shot_dict[red_shots[-3]]+shot_dict[red_shots[-2]]+shot_dict[red_shots[-1]])
+            if len(blue_shots) > 2 and len(red_shots) > 2:
+                if winner:
+                    blue_win.append(shot_dict[blue_shots[-3]]+shot_dict[blue_shots[-2]]+shot_dict[blue_shots[-1]])
+                    red_loss.append(shot_dict[red_shots[-3]]+shot_dict[red_shots[-2]]+shot_dict[red_shots[-1]])
+                else:
+                    blue_loss.append(shot_dict[blue_shots[-3]]+shot_dict[blue_shots[-2]]+shot_dict[blue_shots[-1]])
+                    red_win.append(shot_dict[red_shots[-3]]+shot_dict[red_shots[-2]]+shot_dict[red_shots[-1]])
         blue_win_dict = counts(blue_win)
         blue_loss_dict = counts(blue_loss)
         red_win_dict = counts(red_win)
