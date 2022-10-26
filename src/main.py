@@ -18,11 +18,11 @@ def main():
         if not isExit:
             _ = vpr.resolve()
 
-        blue_win_dict, blue_loss_dict, red_win_dict, red_loss_dict = vpr.get_player_strategy()
-        print(blue_win_dict, blue_loss_dict, red_win_dict, red_loss_dict)
-        # total_info = vpr.get_total_info()
+        # blue_win_dict, blue_loss_dict, red_win_dict, red_loss_dict = vpr.get_player_strategy()
+        # print(blue_win_dict, blue_loss_dict, red_win_dict, red_loss_dict)
+        total_info = vpr.get_total_info()
         # scores_dict = vpr.get_respective_score_info()
-        # print(total_info)
+        print(total_info)
         # print(len(scores_dict['g1']), len(scores_dict['g2']))
 
 if __name__ == '__main__':

@@ -14,12 +14,16 @@ def counts(list):
 
     return count
 
+
 def count_percentage(dict):
-    total = 0.00001
+    total = 0
     for k in dict.keys():
         total += dict[k]
     for k in dict.keys():
-        dict[k] = np.round(dict[k] / total * 100, 2)
+        if total != 0:
+            dict[k] = np.round(dict[k] / total * 100, 2)
+        else:
+            dict[k] = np.round(dict[k], 2)
     return dict
 
 def shot_match(player_shot_list, top):

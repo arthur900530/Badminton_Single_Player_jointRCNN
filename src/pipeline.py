@@ -630,7 +630,7 @@ class video_resolver:
                         if p == 1:
                             # check if next game starts
                             if zero_count != 0 and 1100 < zero_count < 1500 and score != 0 and game < 3:
-                                res_game_info.append({f'g{game}': score, 'top bot score': top_bot_score})
+                                res_game_info.append({f'score count': score, 'top bot score': top_bot_score})
                                 last_score = score
                                 game += 1
                                 score = 0
@@ -685,7 +685,7 @@ class video_resolver:
         print(f'Score: {score}')
 
         # last score
-        res_game_info.append({f'g{game}': score, 'top bot score': top_bot_score})
+        res_game_info.append({f'score count': score, 'top bot score': top_bot_score})
         print(res_game_info, len(res_game_info))
 
         top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info), score - 1,
@@ -723,16 +723,25 @@ class video_resolver:
         for k in frame_dict['blue win shots'].keys():
             blue_total_shots[k] += frame_dict['blue loss shots'][k]
             red_total_shots[k] += frame_dict['red loss shots'][k]
+            if (frame_dict['blue win shots'][k] + frame_dict['blue loss shots'][k]) != 0:
+                frame_dict['blue win shots'][k] = np.round(frame_dict['blue win shots'][k] / (frame_dict['blue win shots'][k] + frame_dict['blue loss shots'][k]) * 100, 2)
+            else:
+                frame_dict['blue win shots'][k] = np.round(frame_dict['blue win shots'][k], 2)
+            if (frame_dict['red win shots'][k] + frame_dict['red loss shots'][k]) != 0:
+                frame_dict['red win shots'][k] = np.round(frame_dict['red win shots'][k] / (frame_dict['red win shots'][k] + frame_dict['red loss shots'][k]) * 100, 2)
+            else:
+                frame_dict['red win shots'][k] = np.round(frame_dict['red win shots'][k], 2)
+
         games = frame_dict['games']
         for game in games[:-1]:
             game['top bot score'][np.argmax(game['top bot score'])] += 1
+            game['score count'] += 1
         selected_dict = {
             'games': games,
             'blue_total_shots': count_percentage(blue_total_shots),
             'red_total_shots': count_percentage(red_total_shots),
-            'blue win shots': count_percentage(frame_dict['blue win shots']),
-            'blue loss shots': count_percentage(frame_dict['blue loss shots']),
-            'red win shots': count_percentage(frame_dict['red win shots']),
+            'blue win shots': frame_dict['blue win shots'],
+            'red win shots': frame_dict['red win shots'],
             'red loss shots': count_percentage(frame_dict['red loss shots']),
             'blue total move': count_percentage(frame_dict['blue total move']),
             'red total move': count_percentage(frame_dict['red total move']),
