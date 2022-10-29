@@ -11,6 +11,35 @@ from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_P
 from scene_utils import scene_classifier
 
 
+def output_highlights(base, num_list, blue):
+    img_list = []
+    player = 'blue' if blue else 'red'
+    print(f'Generating {player} Highlights')
+    for nums in num_list:
+        game_num = nums[0]
+        score_num = nums[1]
+        cap = cv2.VideoCapture(f'{base}/game_{game_num}_score_{score_num}/video.mp4')
+        if not cap.isOpened():
+            print('Error while trying to read video. Please check path again')
+        frame_width = int(cap.get(3))
+        frame_height = int(cap.get(4))
+        FPS = int(cap.get(5))
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if ret:
+                img_list.append(frame)
+            else:
+                break
+
+    out = cv2.VideoWriter(f"{base}/{player}_highlights.mp4",cv2.VideoWriter_fourcc(*'mp4v'), FPS, (frame_width, frame_height))
+    for frame in img_list:
+        out.write(frame)
+    out.release()
+    print('Done!')
+
+    return True
+
+
 def check_type(last_type, wait_list):
     sum = 0
     if last_type == 1:
@@ -790,7 +819,6 @@ class video_resolver:
         return scores_dict
 
     def get_player_strategy(self):
-        blue_win, blue_loss, red_win, red_loss = [], [], [], []
         paths = get_path(f"{self.base}/outputs/{self.vid_name}")[:-1]
         shot_dict = {
             '長球': '0',
@@ -801,34 +829,61 @@ class video_resolver:
             '平球': '5',
             '撲球': '6',
         }
+        blue_win_shots_and_nums = {}
+        blue_loss_shots_and_nums = {}
+        red_win_shots_and_nums = {}
+        red_loss_shots_and_nums = {}
         for path in paths:
             with open(f"{path}/info.json", 'r') as f:
                 frame_dict = json.load(f)
+            game_num = path.split('/')[-1].split('_')[1]
+            score_num = path.split('/')[-1].split('_')[-1]
             blue_shots, red_shots = [], []
             winner = frame_dict['winner']
             blue_serve_first = frame_dict['blue serve first']
             shot_list = frame_dict['shot list']
-            for i in range(len(shot_list)):
-                if blue_serve_first:
+            if len(shot_list) < 6:
+                continue
+            for i in range(6):
+                if (blue_serve_first and len(shot_list) % 2 == 1) or (not blue_serve_first and len(shot_list) % 2 == 0):
                     if i % 2 == 0:
-                        blue_shots.append(shot_list[i][0].split(' ')[-1])
+                        red_shots.append(shot_list[i-6][0].split(' ')[-1])
                     else:
-                        red_shots.append(shot_list[i][0].split(' ')[-1])
+                        blue_shots.append(shot_list[i-6][0].split(' ')[-1])
                 else:
                     if i % 2 == 0:
-                        red_shots.append(shot_list[i][0].split(' ')[-1])
+                        blue_shots.append(shot_list[i-6][0].split(' ')[-1])
                     else:
-                        blue_shots.append(shot_list[i][0].split(' ')[-1])
-            if len(blue_shots) > 2 and len(red_shots) > 2:
-                if winner:
-                    blue_win.append(shot_dict[blue_shots[-3]]+shot_dict[blue_shots[-2]]+shot_dict[blue_shots[-1]])
-                    red_loss.append(shot_dict[red_shots[-3]]+shot_dict[red_shots[-2]]+shot_dict[red_shots[-1]])
+                        red_shots.append(shot_list[i-6][0].split(' ')[-1])
+            blue_key = shot_dict[blue_shots[-3]] + shot_dict[blue_shots[-2]] + shot_dict[blue_shots[-1]]
+            red_key = shot_dict[red_shots[-3]] + shot_dict[red_shots[-2]] + shot_dict[red_shots[-1]]
+            if winner:
+                if blue_key in blue_win_shots_and_nums.keys():
+                    blue_win_shots_and_nums[blue_key].append((game_num, score_num))
                 else:
-                    blue_loss.append(shot_dict[blue_shots[-3]]+shot_dict[blue_shots[-2]]+shot_dict[blue_shots[-1]])
-                    red_win.append(shot_dict[red_shots[-3]]+shot_dict[red_shots[-2]]+shot_dict[red_shots[-1]])
-        blue_win_dict = counts(blue_win)
-        blue_loss_dict = counts(blue_loss)
-        red_win_dict = counts(red_win)
-        red_loss_dict = counts(red_loss)
+                    blue_win_shots_and_nums[blue_key] = [(game_num, score_num)]
+                if red_key in red_loss_shots_and_nums.keys():
+                    red_loss_shots_and_nums[red_key].append((game_num, score_num))
+                else:
+                    red_loss_shots_and_nums[red_key] = [(game_num, score_num)]
+            else:
+                if blue_key in blue_loss_shots_and_nums.keys():
+                    blue_loss_shots_and_nums[blue_key].append((game_num, score_num))
+                else:
+                    blue_loss_shots_and_nums[blue_key] = [(game_num, score_num)]
+                if red_key in red_win_shots_and_nums.keys():
+                    red_win_shots_and_nums[red_key].append((game_num, score_num))
+                else:
+                    red_win_shots_and_nums[red_key] = [(game_num, score_num)]
 
-        return blue_win_dict, blue_loss_dict, red_win_dict, red_loss_dict
+        blue_win_key, bw_len = counts(blue_win_shots_and_nums)
+        blue_loss_key, bl_len = counts(blue_loss_shots_and_nums)
+        red_win_key, rw_len = counts(red_win_shots_and_nums)
+        red_loss_key, rl_len = counts(red_loss_shots_and_nums)
+        print(bw_len, rw_len)
+        if bw_len > 3:
+            output_highlights(f"{self.base}/outputs/{self.vid_name}", blue_win_shots_and_nums[blue_win_key], True)
+        if rw_len > 3:
+            output_highlights(f"{self.base}/outputs/{self.vid_name}", red_win_shots_and_nums[red_win_key], False)
+
+        return
