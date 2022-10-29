@@ -881,9 +881,20 @@ class video_resolver:
         red_win_key, rw_len = counts(red_win_shots_and_nums)
         red_loss_key, rl_len = counts(red_loss_shots_and_nums)
         print(bw_len, rw_len)
+        b_hl, bwk, blk = False, False, False
+        r_hl, rwk, rlk = False, False, False
+
         if bw_len > 3:
             output_highlights(f"{self.base}/outputs/{self.vid_name}", blue_win_shots_and_nums[blue_win_key], True)
+            b_hl = True
+            bwk = blue_win_key
+        if bl_len > 3:
+            blk = blue_loss_key
         if rw_len > 3:
             output_highlights(f"{self.base}/outputs/{self.vid_name}", red_win_shots_and_nums[red_win_key], False)
+            r_hl = True
+            rwk = red_win_key
+        if rl_len > 3:
+            rlk = red_loss_key
 
-        return
+        return b_hl, r_hl, [bwk, blk, rwk, rlk]
