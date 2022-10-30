@@ -17,7 +17,7 @@ def main():
         vpr = video_resolver(vid_path, output_base='E:/test_videos', isExit=isExit)  # output base is where "outputs" dir is
         if not isExit:
             _ = vpr.resolve()
-
+        # boolean, boolean, [blue win key, blue loss key, red win key, red loss key]
         blue_highlight, red_highlight, keys = vpr.get_player_strategy()
         print(keys)
         # total_info = vpr.get_total_info()

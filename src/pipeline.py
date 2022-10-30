@@ -11,6 +11,23 @@ from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_P
 from scene_utils import scene_classifier
 
 
+def code_to_name(code):
+    shots = []
+    trans_dict = {
+        '0': '長球',
+        '1': '切球',
+        '2': '殺球',
+        '3': '挑球',
+        '4': '小球',
+        '5': '平球',
+        '6': '撲球',
+    }
+    shots.append(trans_dict[code[0]])
+    shots.append(trans_dict[code[1]])
+    shots.append(trans_dict[code[2]])
+    return shots
+
+
 def output_highlights(base, num_list, blue):
     img_list = []
     player = 'blue' if blue else 'red'
@@ -884,17 +901,17 @@ class video_resolver:
         b_hl, bwk, blk = False, False, False
         r_hl, rwk, rlk = False, False, False
 
-        if bw_len > 3:
+        if bw_len > 2:
             output_highlights(f"{self.base}/outputs/{self.vid_name}", blue_win_shots_and_nums[blue_win_key], True)
             b_hl = True
-            bwk = blue_win_key
-        if bl_len > 3:
-            blk = blue_loss_key
-        if rw_len > 3:
+            bwk = code_to_name(blue_win_key)
+        if bl_len > 2:
+            blk = code_to_name(blue_loss_key)
+        if rw_len > 2:
             output_highlights(f"{self.base}/outputs/{self.vid_name}", red_win_shots_and_nums[red_win_key], False)
             r_hl = True
-            rwk = red_win_key
-        if rl_len > 3:
-            rlk = red_loss_key
+            rwk = code_to_name(red_win_key)
+        if rl_len > 2:
+            rlk = code_to_name(red_loss_key)
 
         return b_hl, r_hl, [bwk, blk, rwk, rlk]
