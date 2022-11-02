@@ -19,12 +19,10 @@ def main():
             _ = vpr.resolve()
         # boolean, boolean, [blue win key, blue loss key, red win key, red loss key]
         blue_highlight, red_highlight, keys = vpr.get_highlights_info()
-        print(keys)
+
         # total_info = vpr.get_total_info()
+
         # scores_dict = vpr.get_respective_score_info()
-        # print(total_info)
-        # print(scores_dict['g1'])
-        # print(len(scores_dict['g1']), len(scores_dict['g2']))
 
 if __name__ == '__main__':
     main()
