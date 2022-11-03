@@ -869,8 +869,8 @@ class video_resolver:
             game['score count'] += 1
         selected_dict = {
             'games': games,
-            'blue_total_shots': count_percentage(blue_total_shots),
-            'red_total_shots': count_percentage(red_total_shots),
+            'blue total shots': count_percentage(blue_total_shots),
+            'red total shots': count_percentage(red_total_shots),
             'blue win shots': frame_dict['blue win shots'],
             'red win shots': frame_dict['red win shots'],
             'red loss shots': count_percentage(frame_dict['red loss shots']),
