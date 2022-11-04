@@ -15,6 +15,12 @@ def counts(dict):
     return max_key, max_len
 
 
+def to_float(dict):
+    for k in dict.keys():
+        dict[k] = float(dict[k])
+    return dict
+
+
 def count_percentage(dict):
     total = 0
     for k in dict.keys():

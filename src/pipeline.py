@@ -1,12 +1,12 @@
-import copy, cv2, json, time, numpy as np
+import copy, csv, cv2, json, time, numpy as np, matplotlib
 import shutil
 from PIL import Image
 import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils, transformer_utils
-from shot_recognition import check_hit_frame, add_result2
-from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage, counts
+from shot_recognition import check_hit_frame, add_result, add_result2
+from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage, counts, to_float
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
 
@@ -27,7 +27,7 @@ def generate_player_strategy(base, vid_name):
     red_win_shots_and_nums = {}
     red_loss_shots_and_nums = {}
     for path in paths:
-        with open(f"{path}/info.json", 'r') as f:
+        with open(f"{path}/info.json", 'r', encoding="utf-8") as f:
             frame_dict = json.load(f)
         game_num = path.split('/')[-1].split('_')[1]
         score_num = path.split('/')[-1].split('_')[-1]
@@ -73,7 +73,6 @@ def generate_player_strategy(base, vid_name):
     blue_loss_key, bl_len = counts(blue_loss_shots_and_nums)
     red_win_key, rw_len = counts(red_win_shots_and_nums)
     red_loss_key, rl_len = counts(red_loss_shots_and_nums)
-    print(bw_len, rw_len)
     b_hl, bwk, blk = False, False, False
     r_hl, rwk, rlk = False, False, False
 
@@ -99,8 +98,8 @@ def generate_player_strategy(base, vid_name):
         'red loss key': rlk,
     }
     hl_info_save_path = f"{base}/outputs/{vid_name}/highlights.json"
-    with open(hl_info_save_path, 'w') as f:
-        json.dump(hl_info_dict, f, indent=2)
+    with open(hl_info_save_path, 'w', encoding="utf-8") as f:
+        json.dump(hl_info_dict, f, indent=2, ensure_ascii=False)
 
     return True
 
@@ -266,7 +265,7 @@ def get_court_info(frame_height, court_kp_model, court_kp_model_old, img):
 
 # update the score using the serving player of next score
 def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, flip, win_loss_dicts):
-    with open(f"{base}/outputs/{vid_name}/scores/game_{game}_score_{score}/info.json", 'r') as score_json:
+    with open(f"{base}/outputs/{vid_name}/scores/game_{game}_score_{score}/info.json", 'r', encoding="utf-8") as score_json:
         dict = json.load(score_json)
         shot_list = dict['shot list']
         bsv = dict['blue serve first']
@@ -311,8 +310,8 @@ def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, 
                 else:
                     win_loss_dicts[1][shot_list[i][0].split(' ')[-1]] += 1
 
-    with open(f"{base}/outputs/{vid_name}/scores/game_{game}_score_{score}/info.json", 'w') as f:
-        json.dump(dict, f, indent=2)
+    with open(f"{base}/outputs/{vid_name}/scores/game_{game}_score_{score}/info.json", 'w', encoding="utf-8") as f:
+        json.dump(dict, f, indent=2, ensure_ascii=False)
 
     return top_bot_score, win_loss_dicts
 
@@ -490,9 +489,7 @@ class video_resolver:
             '挑球': 0,
             '小球': 0,
             '平球': 0,
-            '撲球': 0,
-            '拉吊': 0,
-            '搶攻': 0
+            '撲球': 0
         }, {
             '長球': 0,
             '切球': 0,
@@ -500,9 +497,7 @@ class video_resolver:
             '挑球': 0,
             '小球': 0,
             '平球': 0,
-            '撲球': 0,
-            '拉吊': 0,
-            '搶攻': 0
+            '撲球': 0
         }, {
             '長球': 0,
             '切球': 0,
@@ -510,9 +505,7 @@ class video_resolver:
             '挑球': 0,
             '小球': 0,
             '平球': 0,
-            '撲球': 0,
-            '拉吊': 0,
-            '搶攻': 0
+            '撲球': 0
         }, {
             '長球': 0,
             '切球': 0,
@@ -520,9 +513,7 @@ class video_resolver:
             '挑球': 0,
             '小球': 0,
             '平球': 0,
-            '撲球': 0,
-            '拉吊': 0,
-            '搶攻': 0
+            '撲球': 0
         }]
 
         frame_width = int(self.cap.get(3))
@@ -579,8 +570,8 @@ class video_resolver:
                                     # here lies the origin out
                                     framesDict = {'frames': joint_list}
                                     joint_save_path = f"{store_path}/score_{score}_joint.json"
-                                    with open(joint_save_path, 'w') as f:
-                                        json.dump(framesDict, f, indent=2)
+                                    with open(joint_save_path, 'w', encoding="utf-8") as f:
+                                        json.dump(framesDict, f, indent=2, ensure_ascii=False)
 
                                     joint_list = torch.tensor(np.array(transformer_utils.get_data(joint_save_path,
                                                                                                   'model_weights/scaler_ultimate_2.pickle')),
@@ -750,8 +741,8 @@ class video_resolver:
                                             'red move dict': r_move_dict
                                         }
                                         info_save_path = f"{store_path}/info.json"
-                                        with open(info_save_path, 'w') as f:
-                                            json.dump(info_dict, f, indent=2)
+                                        with open(info_save_path, 'w', encoding="utf-8") as f:
+                                            json.dump(info_dict, f, indent=2, ensure_ascii=False)
                                         if success:
                                             print(f'Finish score_{score}')
                                         score += 1
@@ -833,21 +824,21 @@ class video_resolver:
                                                      None, top_bot_score, flip, win_loss_dicts)
         print(top_bot_score)
 
-        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'w') as f:
+        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'w', encoding="utf-8") as f:
             json.dump({'games': res_game_info,
                        'blue win shots': win_loss_dicts[0],
                        'blue loss shots': win_loss_dicts[1],
                        'red win shots': win_loss_dicts[2],
                        'red loss shots': win_loss_dicts[3],
                        'blue total move': b_total_move_dict,
-                       'red total move': r_total_move_dict}, f, indent=2)
+                       'red total move': r_total_move_dict}, f, indent=2, ensure_ascii=False)
 
         generate_player_strategy(self.base, self.vid_name)
 
         return True
 
     def get_total_info(self):
-        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'r') as f:
+        with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'r', encoding="utf-8") as f:
             frame_dict = json.load(f)
         blue_total_shots = copy.deepcopy(frame_dict['blue win shots'])
         red_total_shots = copy.deepcopy(frame_dict['red win shots'])
@@ -881,7 +872,7 @@ class video_resolver:
 
     def get_respective_score_info(self):
         g1, g2, g3 = [], [], []
-        paths = get_path(f"{self.base}/outputs/{self.vid_name}")
+        paths = get_path(f"{self.base}/outputs/{self.vid_name}/scores")
         for path in paths:
             num = path.split('/')[-1].split('_')[1]
             if num == '1':
@@ -897,19 +888,19 @@ class video_resolver:
         g1, g2, g3 = [], [], []
         for p in paths:
             num = p.split('/')[-1].split('_')[1]
-            with open(f"{p}/info.json", 'r') as f:
+            with open(f"{p}/info.json", 'r', encoding="utf-8") as f:
                 frame_dict = json.load(f)
             selected_dict = {
-                'game': frame_dict['game'],
+                'game': float(frame_dict['game']),
                 'top bot score': frame_dict['top bot score'],
                 'winner': frame_dict['winner'],
                 'blue serve first': frame_dict['blue serve first'],
                 'shot list': frame_dict['shot list'],
-                'blue shot dict': frame_dict['blue shot dict'],
-                'red shot dict': frame_dict['red shot dict'],
+                'blue shot dict': to_float(frame_dict['blue shot dict']),
+                'red shot dict': to_float(frame_dict['red shot dict']),
                 'move direction list': frame_dict['move direction list'],
-                'blue move dict': count_percentage(frame_dict['blue move dict']),
-                'red move dict': count_percentage(frame_dict['red move dict']),
+                'blue move dict': to_float(count_percentage(frame_dict['blue move dict'])),
+                'red move dict': to_float(count_percentage(frame_dict['red move dict'])),
             }
             if num == '1':
                 g1.append(selected_dict)
@@ -921,7 +912,7 @@ class video_resolver:
         return scores_dict
 
     def get_highlights_info(self):
-        with open(f"{self.base}/outputs/{self.vid_name}/highlights.json", 'r') as f:
+        with open(f"{self.base}/outputs/{self.vid_name}/highlights.json", 'r', encoding="utf-8") as f:
             frame_dict = json.load(f)
         bhl = frame_dict['blue highlights']
         rhl = frame_dict['red highlights']
