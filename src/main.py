@@ -18,7 +18,7 @@ def main():
         if not isExit:
             _ = vpr.resolve()
         # boolean, boolean, [blue win key, blue loss key, red win key, red loss key]
-        blue_highlight, red_highlight, keys = vpr.get_highlights_info()
+        # blue_highlight, red_highlight, keys = vpr.get_highlights_info()
 
         # total_info = vpr.get_total_info()
 

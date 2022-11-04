@@ -1,11 +1,11 @@
-import copy, csv, cv2, json, time, numpy as np, matplotlib
+import copy, cv2, json, time, numpy as np
 import shutil
 from PIL import Image
 import torch, torchvision
 from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils, transformer_utils
-from shot_recognition import check_hit_frame, add_result, add_result2
+from shot_recognition import check_hit_frame, add_result2
 from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage, counts
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
@@ -129,7 +129,7 @@ def output_highlights(base, num_list, blue):
     for nums in num_list:
         game_num = nums[0]
         score_num = nums[1]
-        cap = cv2.VideoCapture(f'{base}/game_{game_num}_score_{score_num}/video.mp4')
+        cap = cv2.VideoCapture(f'{base}/scores/game_{game_num}_score_{score_num}/video.mp4')
         if not cap.isOpened():
             print('Error while trying to read video. Please check path again')
         frame_width = int(cap.get(3))
