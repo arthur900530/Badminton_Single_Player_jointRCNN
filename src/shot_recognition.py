@@ -4,60 +4,6 @@ from PIL import Image, ImageDraw, ImageFont
 from utility import zone, cal_move_direction, top_bottom
 
 
-# def get_area(court_points, bounds):
-#     l_a = (court_points[0][1] - court_points[4][1]) / (
-#             court_points[0][0] - court_points[4][0])
-#     l_b = court_points[0][1] - l_a * court_points[0][0]
-#     r_a = (court_points[1][1] - court_points[5][1]) / (
-#             court_points[1][0] - court_points[5][0])
-#     r_b = court_points[1][1] - r_a * court_points[1][0]
-#     all = []
-#
-#     tb0x = (min(court_points[0][1], court_points[1][1]) - l_b) / l_a
-#     tbox = (min(court_points[0][1], court_points[1][1]) - r_b) / r_a
-#     tb1x = (bounds[0][1] - l_b) / l_a
-#     tb2x = (bounds[0][1] - r_b) / r_a
-#     top_back_area = np.array([[tb0x, min(court_points[0][1], court_points[1][1])], [tbox, min(court_points[0][1], court_points[1][1])], [tb2x, bounds[0][1]], [tb1x, bounds[0][1]]], np.int32)
-#     top_b = top_back_area.reshape((-1, 1, 2))
-#
-#     tm1x = (bounds[1][1] - l_b) / l_a
-#     tm2x = (bounds[1][1] - r_b) / r_a
-#     top_mid_area = np.array([[tb1x, bounds[0][1]], [tb2x, bounds[0][1]], [tm2x, bounds[1][1]], [tm1x, bounds[1][1]]], np.int32)
-#     top_m = top_mid_area.reshape((-1, 1, 2))
-#
-#     tf1x = (bounds[2][1] - l_b) / l_a
-#     tf2x = (bounds[2][1] - r_b) / r_a
-#     top_front_area = np.array(
-#         [[tm1x, bounds[1][1]], [tm2x, bounds[1][1]], [tf2x, bounds[2][1]], [tf1x, bounds[2][1]]], np.int32)
-#     top_f = top_front_area.reshape((-1, 1, 2))
-#
-#     bf1x = (bounds[3][1] - l_b) / l_a
-#     bf2x = (bounds[3][1] - r_b) / r_a
-#     bot_front_area = np.array(
-#         [[tf1x, bounds[2][1]+2], [tf2x, bounds[2][1]+2], [bf2x, bounds[3][1]], [bf1x, bounds[3][1]]], np.int32)
-#     bot_f = bot_front_area.reshape((-1, 1, 2))
-#
-#     bm1x = (bounds[4][1] - l_b) / l_a
-#     bm2x = (bounds[4][1] - r_b) / r_a
-#     bot_mid_area = np.array(
-#         [[bf1x, bounds[3][1]], [bf2x, bounds[3][1]], [bm2x, bounds[4][1]], [bm1x, bounds[4][1]]], np.int32)
-#     bot_m = bot_mid_area.reshape((-1, 1, 2))
-#
-#     bb1x = (bounds[5][1] - l_b) / l_a
-#     bb2x = (bounds[5][1] - r_b) / r_a
-#     bot_back_area = np.array(
-#         [[bm1x, bounds[4][1]], [bm2x, bounds[4][1]], [bb2x, bounds[5][1]], [bb1x, bounds[5][1]]], np.int32)
-#     bot_b = bot_back_area.reshape((-1, 1, 2))
-#     # (39, 171, 242)
-#     all.append((top_b, (255, 255, 0)))
-#     all.append((top_m, (255, 255, 0)))
-#     all.append((top_f, (255, 255, 0)))
-#     all.append((bot_f, (0, 255, 255)))
-#     all.append((bot_m, (0, 255, 255)))
-#     all.append((bot_b, (0, 255, 255)))
-#     return all
-
-
 # [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
 def add_result(base, vid_path, shot_list, move_dir_list, court_points):
     cap = cv2.VideoCapture(vid_path)
@@ -67,7 +13,7 @@ def add_result(base, vid_path, shot_list, move_dir_list, court_points):
     frame_height = int(cap.get(4))
     FPS = cap.get(5)
     save_path = f"{base}{vid_path.split('/')[-1].split('.')[0]}_added.mp4"
-    out = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), FPS,(frame_width, frame_height))
+    out = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), FPS, (frame_width, frame_height))
     count = 1
     i = 0
     imax = len(shot_list)
@@ -138,15 +84,42 @@ def add_result2(out, joint_img_list, shot_list, move_dir_list):
     return True
 
 
+def correct_seq(seq):
+    def find_last_index(search_list, search_item):
+        return len(search_list) - 1 - search_list[::-1].index(search_item)
+
+    if 2 in seq and 1 in seq:
+        front_zero = min(seq.index(2), seq.index(1))
+        back_zero = max(find_last_index(seq, 2), find_last_index(seq, 1)) + 1
+    elif 2 in seq:
+        front_zero = seq.index(2)
+        back_zero = find_last_index(seq, 2) + 1
+    elif 1 in seq:
+        front_zero = seq.index(1)
+        back_zero = find_last_index(seq, 1) + 1
+
+    temp = seq[front_zero:back_zero]
+    while (True):
+        try:
+            index = temp.index(0)
+            temp[index] = temp[index - 1]
+        except:
+            break
+    f_zero = [0 for i in range(front_zero)]
+    b_zero = [0 for i in range(len(seq) - back_zero)]
+    return f_zero + temp + b_zero
+
+
 def check_hit_frame(direction_list, joint_list, court_points, multi_points):
     # joint_list seq len, 2, 12, 2
     multi_points = np.array(multi_points)
     multi_points = np.reshape(multi_points, (7, 5, 2))
-    bounds = get_area_bound(court_points)             #前中後場
+    bounds = get_area_bound(court_points)  # 前中後場
     shot_list = []
     move_dir_list = []
     got_first = False
     last_d = 0
+    direction_list = correct_seq(direction_list)
     for i in range(len(direction_list)):
         d = direction_list[i]
         if not got_first:
@@ -156,9 +129,7 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
                 first_x_bot = (joint_list[i][bot][-1][0] + joint_list[i][bot][-2][0]) / 2
                 first_y_bot = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
                 first_coord_bot = np.array([first_x_bot, first_y_bot])
-
                 first_zone = zone(first_coord_bot, multi_points)
-                print(first_coord_bot, first_zone)
                 first_i = i
                 got_first = True
                 last_d = 1
@@ -169,7 +140,6 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
                 first_y_top = (joint_list[i][top][-1][1] + joint_list[i][top][-2][1]) / 2
                 first_coord_top = np.array([first_x_top, first_y_top])
                 first_zone = zone(first_coord_top, multi_points)
-                print(first_coord_top, first_zone)
 
                 first_i = i
                 got_first = True
@@ -189,7 +159,6 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
             second_y_bot = (joint_list[i][bot][-1][1] + joint_list[i][bot][-2][1]) / 2
             second_coord_fm = np.array([second_x_bot, second_y_bot])
             second_zone = zone(second_coord_fm, multi_points)
-            print(second_coord_fm, second_zone)
             second_i = i
 
             shot, top_serve = shot_recog(first_y, second_y, d, bounds)
@@ -221,7 +190,6 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
 
             second_coord_fm = np.array([second_x_top, second_y_top])
             second_zone = zone(second_coord_fm, multi_points)
-            print(second_coord_fm, second_zone)
             second_i = i
 
             shot, top_serve = shot_recog(first_y, second_y, d, bounds)
@@ -244,15 +212,15 @@ def get_area_bound(court_points):
     top = round((court_points[0][1] + court_points[1][1]) / 2)
     mid = round((court_points[2][1] + court_points[3][1]) / 2)
     bot = round((court_points[4][1] + court_points[5][1]) / 2)
-    top_sliced_area = (mid - top)/10
-    bot_sliced_area = (bot - mid)/10
-    top_back = (top, top + 4*top_sliced_area)
-    top_mid = (top + 4*top_sliced_area, top + 6*top_sliced_area)
-    top_front = (top + 6*top_sliced_area, mid)
+    top_sliced_area = (mid - top) / 10
+    bot_sliced_area = (bot - mid) / 10
+    top_back = (top, top + 4 * top_sliced_area)
+    top_mid = (top + 4 * top_sliced_area, top + 6 * top_sliced_area)
+    top_front = (top + 6 * top_sliced_area, mid)
 
-    bot_back = (bot - 4*bot_sliced_area, bot)
-    bot_mid = (bot - 6*bot_sliced_area, bot - 4*bot_sliced_area)
-    bot_front = (mid, bot - 6*bot_sliced_area)
+    bot_back = (bot - 4 * bot_sliced_area, bot)
+    bot_mid = (bot - 6 * bot_sliced_area, bot - 4 * bot_sliced_area)
+    bot_front = (mid, bot - 6 * bot_sliced_area)
 
     bounds = [top_back, top_mid, top_front, bot_front, bot_mid, bot_back]
     return bounds
@@ -278,11 +246,11 @@ def check_pos(coord, bounds, pos):
 
 def shot_recog(first_coord, second_coord, d, bounds):
     bounds = bounds
-    if d == 1:      # last d == 2
+    if d == 1:  # last d == 2
         pos_bot = check_pos(first_coord, bounds, 'bot')
         pos_top = check_pos(second_coord, bounds, 'top')
         serve = 'bot'
-    if d == 2:      # last d == 1
+    if d == 2:  # last d == 1
         pos_top = check_pos(first_coord, bounds, 'top')
         pos_bot = check_pos(second_coord, bounds, 'bot')
         serve = 'top'
@@ -294,7 +262,7 @@ def shot_recog(first_coord, second_coord, d, bounds):
 def check_shot(pos_top, pos_bot, serve):
     if serve == 'top':
         if pos_top == 'front' and pos_bot == 'front':
-            return '↓ 小球', True                     #True stands for top player's
+            return '↓ 小球', True  # True stands for top player's
         if pos_top == 'front' and pos_bot == 'mid':
             return '↓ 撲球', True
         if pos_top == 'front' and pos_bot == 'back':
@@ -330,7 +298,6 @@ def check_shot(pos_top, pos_bot, serve):
             return '↑ 挑球', False
         if pos_top == 'back' and pos_bot == 'back':
             return '↑ 長球', False
-
 
 # def get_data(path):
 #     inputs = []

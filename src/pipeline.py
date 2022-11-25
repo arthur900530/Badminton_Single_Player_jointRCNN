@@ -1,4 +1,5 @@
 import copy, csv, cv2, json, time, numpy as np, matplotlib
+import os
 import shutil
 from PIL import Image
 import torch, torchvision
@@ -518,7 +519,7 @@ class video_resolver:
 
         frame_width = int(self.cap.get(3))
         frame_height = int(self.cap.get(4))
-        frame_count, saved_count = 1, 0
+        frame_count, saved_count = 0, 0
         time_rate = 0.1
         FPS = self.cap.get(5)
         frame_rate = round(int(FPS) * time_rate)
@@ -556,11 +557,11 @@ class video_resolver:
                             if not correct:
                                 p = 0 if p == 1 else 1
                             if p == 0:
-                                print(len(joint_list) / one_count, one_count)
-                                if len(joint_list) / one_count > 0.6 and one_count > 25:  # 25 is changable
+                                if one_count > 25 and len(joint_list) / one_count > 0.6:  # 25 is changable
                                     if not start_recording:
                                         start_recording = True
                                         end_frame = frame_count
+                                    eli_repeat = 0
                                     store_path = f"{self.base}/outputs/{self.vid_name}/scores/game_{game}_score_{score}"
                                     eli_path = f"{self.base}/outputs/eliminated/{self.vid_name}/game_{game}_score_{score}"
                                     check_dir(store_path)
@@ -592,23 +593,12 @@ class video_resolver:
                                                                                    self.true_court_points,
                                                                                    self.multi_points)
                                         print(shot_list, move_dir_list)
-                                        offensive, pos = type_classify(shot_list)
 
                                         out = cv2.VideoWriter(f"{store_path}/video.mp4",
                                                               cv2.VideoWriter_fourcc(*'mp4v'), int(FPS / frame_rate),
                                                               (frame_width, frame_height))
                                         success = add_result2(out, joint_img_list, shot_list, move_dir_list)
                                         out.release()
-
-                                        if offensive is None:
-                                            top_type = None
-                                            bot_type = None
-                                        elif offensive:
-                                            top_type = True if pos else False
-                                            bot_type = True if not pos else False
-                                        elif not offensive:
-                                            top_type = False
-                                            bot_type = False
 
                                         if score != 0:
                                             top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, game,
@@ -623,9 +613,18 @@ class video_resolver:
                                                                                          shuttle_direction,
                                                                                          top_bot_score, flip,
                                                                                          win_loss_dicts)
+                                            if top_bot_score[0] == 1:
+                                                res_game_info[-1]['top bot score'][0] += 1
+                                            else:
+                                                res_game_info[-1]['top bot score'][1] += 1
+                                            top_bot_score = [0, 0]
 
-                                        first_dir = True if shuttle_direction.index(1) < shuttle_direction.index(
-                                            2) else False
+                                        if 2 in shuttle_direction and 1 in shuttle_direction:
+                                            first_dir = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                        elif 2 in shuttle_direction:
+                                            first_dir = False
+                                        elif 1 in shuttle_direction:
+                                            first_dir = True
 
                                         if not flip and first_dir:
                                             bsv = True
@@ -726,9 +725,6 @@ class video_resolver:
                                             'game': game,
                                             'score': score,
                                             'time': [start_time, end_time],
-                                            'long rally': True if len(shot_list) > 15 else False,
-                                            'top player type': top_type,
-                                            'bot player type': bot_type,
                                             'winner': None,
                                             'top bot score': top_bot_score,
                                             'shuttle direction': shuttle_direction,
@@ -747,13 +743,19 @@ class video_resolver:
                                             print(f'Finish score_{score}')
                                         score += 1
                                     else:  # all 0
+                                        zero_count = backup_z
                                         out = cv2.VideoWriter(f"{store_path}/video.mp4",
                                                               cv2.VideoWriter_fourcc(*'mp4v'), int(FPS / frame_rate),
                                                               (frame_width, frame_height))
                                         for img in joint_img_list:
                                             out.write(img)
                                         out.release()
-                                        shutil.move(store_path, eli_path)
+                                        try:
+                                            shutil.move(store_path, eli_path)
+                                        except:
+                                            eli_repeat += 1
+                                            os.rename(store_path,f'{store_path}-{eli_repeat}')
+                                            shutil.move(f'{store_path}-{eli_repeat}', eli_path)
                                 print('clear')
                                 one_count = 0
                                 joint_list = []
@@ -761,17 +763,17 @@ class video_resolver:
                             last_type = p
                         if p == 1:
                             # check if next game starts
-                            if zero_count != 0 and 1100 < zero_count < 1500 and score != 0 and game < 3:
+                            if zero_count != 0 and 996 < zero_count < 1956 and 21 < score and game < 3:
                                 res_game_info.append({f'score count': score, 'top bot score': top_bot_score})
                                 last_score = score
                                 game += 1
                                 score = 0
                                 flip = not flip
                                 top_bot_score = [0, 0]
-                                print(zero_count, '=' * 50)
-                            if zero_count != 0 and 600 < zero_count < 800 and score > 10 and game == 3:
+                            if game == 3 and zero_count != 0 and 480 < zero_count < 1094 and 11 < score < 21 :
                                 flip = not flip
-                                print(zero_count, '=' * 50)
+
+                            backup_z = zero_count
                             zero_count = 0
 
                             # get the court info when first meet the right shooting angle
@@ -804,14 +806,14 @@ class video_resolver:
                         else:
                             zero_count += 1
                     saved_count += 1
-                    print(saved_count, ' / ', total_saved_count)
+                    print(saved_count, ' / ', total_saved_count, ' ', self.vid_name)
                 frame_count += 1
             else:
                 break
         self.cap.release()
         cv2.destroyAllWindows()
 
-        print(f"Second cost: {round(time.time() - self.start_time, 1)}")
+        print(f"Time cost: {round(time.time() - self.start_time, 1)}")
         print(f'Frame count:{frame_count}')
         print(f'Save count:{saved_count}')
         print(f'Score: {score}')
