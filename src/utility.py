@@ -15,6 +15,11 @@ def counts(dict):
     return max_key, max_len
 
 
+def counts_three(dict):
+    key_len_list = sorted(dict.items(), key=lambda x: x[1])[-3:]
+    return key_len_list
+
+
 def to_float(dict):
     for k in dict.keys():
         dict[k] = float(dict[k])

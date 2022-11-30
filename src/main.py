@@ -25,15 +25,20 @@ def main():
         total_info = vpr.get_total_info()
 
         scores_dict = vpr.get_respective_score_info()
-        print(scores_dict)
+        # print(scores_dict['g1'][0])
+        # print(total_info)
         return_info_dict = {
+            'players': {'blue': '...', 'red': '...'},
             'highlights info': [blue_highlight, red_highlight, keys],
-            'respective scores': scores_dict,
-            'total info': total_info
+            'total info': total_info,
+            # 'respective scores': scores_dict,
         }
         joint_save_path = f'../test_videos/outputs/{vid_name}/return_info.json'
-        with open(joint_save_path, 'w', encoding="utf-8") as f:
-            json.dump(return_info_dict, f, indent=2, ensure_ascii=False).encode('utf8')
+        try:
+            with open(joint_save_path, 'w', encoding="utf-8") as f:
+                json.dump(return_info_dict, f, indent=2, ensure_ascii=False)
+        except:
+            print(return_info_dict)
 
 
 if __name__ == '__main__':

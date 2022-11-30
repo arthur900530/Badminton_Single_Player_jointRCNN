@@ -1,4 +1,4 @@
-import copy, csv, cv2, json, time, numpy as np, matplotlib
+import copy, cv2, json, time, numpy as np
 import os
 import shutil
 from PIL import Image
@@ -7,7 +7,7 @@ from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils, transformer_utils
 from shot_recognition import check_hit_frame, add_result, add_result2
-from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage, counts, to_float
+from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage, counts_three, to_float
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
 
@@ -70,33 +70,30 @@ def generate_player_strategy(base, vid_name):
             else:
                 red_win_shots_and_nums[red_key] = [(game_num, score_num)]
 
-    blue_win_key, bw_len = counts(blue_win_shots_and_nums)
-    blue_loss_key, bl_len = counts(blue_loss_shots_and_nums)
-    red_win_key, rw_len = counts(red_win_shots_and_nums)
-    red_loss_key, rl_len = counts(red_loss_shots_and_nums)
-    b_hl, bwk, blk = False, False, False
-    r_hl, rwk, rlk = False, False, False
+    blue_win_keys = counts_three(blue_win_shots_and_nums)
+    blue_loss_keys = counts_three(blue_loss_shots_and_nums)
+    red_win_keys = counts_three(red_win_shots_and_nums)
+    red_loss_keys = counts_three(red_loss_shots_and_nums)
 
-    if bw_len > 2:
+    bwk_list, blk_list, rwk_list, rlk_list = [], [], [], []
+    for i in range(3):
+        index = - i -1
+        blue_win_key = blue_win_keys[index]
+        red_win_key = red_win_keys[index]
+        blue_loss_key = blue_loss_keys[index]
+        red_loss_key = red_loss_keys[index]
         output_highlights(f"{base}/outputs/{vid_name}", blue_win_shots_and_nums[blue_win_key], True)
-        b_hl = True
-        bwk = code_to_name(blue_win_key)
-    if bl_len > 2:
-        blk = code_to_name(blue_loss_key)
-    if rw_len > 2:
         output_highlights(f"{base}/outputs/{vid_name}", red_win_shots_and_nums[red_win_key], False)
-        r_hl = True
-        rwk = code_to_name(red_win_key)
-    if rl_len > 2:
-        rlk = code_to_name(red_loss_key)
+        bwk_list.append(code_to_name(blue_win_key))
+        blk_list.append(code_to_name(blue_loss_key))
+        rwk_list.append(code_to_name(red_win_key))
+        rlk_list.append(code_to_name(red_loss_key))
 
     hl_info_dict = {
-        'blue highlights': b_hl,
-        'red highlights': r_hl,
-        'blue win key': bwk,
-        'blue loss key': blk,
-        'red win key': rwk,
-        'red loss key': rlk,
+        'blue win key': bwk_list,
+        'blue loss key': blk_list,
+        'red win key': rwk_list,
+        'red loss key': rlk_list,
     }
     hl_info_save_path = f"{base}/outputs/{vid_name}/highlights.json"
     with open(hl_info_save_path, 'w', encoding="utf-8") as f:
@@ -763,14 +760,14 @@ class video_resolver:
                             last_type = p
                         if p == 1:
                             # check if next game starts
-                            if zero_count != 0 and 996 < zero_count < 1956 and 21 < score and game < 3:
+                            if zero_count != 0 and 996 < zero_count < 1956 and 18 < max(top_bot_score) and game < 3:
                                 res_game_info.append({f'score count': score, 'top bot score': top_bot_score})
                                 last_score = score
                                 game += 1
                                 score = 0
                                 flip = not flip
                                 top_bot_score = [0, 0]
-                            if game == 3 and zero_count != 0 and 480 < zero_count < 1094 and 11 < score < 21 :
+                            if game == 3 and zero_count != 0 and 480 < zero_count < 1094 and 9 < max(top_bot_score) < 21:
                                 flip = not flip
 
                             backup_z = zero_count
@@ -806,7 +803,7 @@ class video_resolver:
                         else:
                             zero_count += 1
                     saved_count += 1
-                    print(saved_count, ' / ', total_saved_count, ' ', self.vid_name)
+                    print(saved_count, ' / ', total_saved_count, ' ', self.vid_name, 'score: ', score, 'last score: ', last_score)
                 frame_count += 1
             else:
                 break
@@ -821,8 +818,11 @@ class video_resolver:
         # last score
         res_game_info.append({f'score count': score, 'top bot score': top_bot_score})
         print(res_game_info, len(res_game_info))
-
-        top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info), score - 1,
+        if score != 0:
+            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info), score - 1,
+                                                     None, top_bot_score, flip, win_loss_dicts)
+        else:
+            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info) - 1, last_score - 1,
                                                      None, top_bot_score, flip, win_loss_dicts)
         print(top_bot_score)
 
@@ -859,7 +859,7 @@ class video_resolver:
         games = frame_dict['games']
         for game in games[:-1]:
             game['top bot score'][np.argmax(game['top bot score'])] += 1
-            game['score count'] += 1
+            game['score count'] += 1.0
         selected_dict = {
             'games': games,
             'blue total shots': count_percentage(blue_total_shots),
