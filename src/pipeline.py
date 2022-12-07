@@ -7,7 +7,8 @@ from torchvision.transforms import transforms
 from torchvision.transforms import functional as F
 import scene_utils, transformer_utils
 from shot_recognition import check_hit_frame, add_result, add_result2
-from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage, counts_three, to_float
+from utility import check_dir, get_path, parse_time, top_bottom, correction, extension, type_classify, count_percentage, \
+    counts_three, to_float
 from transformer_utils import coordinateEmbedding, PositionalEncoding, Optimus_Prime
 from scene_utils import scene_classifier
 
@@ -77,13 +78,13 @@ def generate_player_strategy(base, vid_name):
 
     bwk_list, blk_list, rwk_list, rlk_list = [], [], [], []
     for i in range(3):
-        index = - i -1
-        blue_win_key = blue_win_keys[index]
-        red_win_key = red_win_keys[index]
-        blue_loss_key = blue_loss_keys[index]
-        red_loss_key = red_loss_keys[index]
-        output_highlights(f"{base}/outputs/{vid_name}", blue_win_shots_and_nums[blue_win_key], True)
-        output_highlights(f"{base}/outputs/{vid_name}", red_win_shots_and_nums[red_win_key], False)
+        index = - i - 1
+        blue_win_key = blue_win_keys[index][0]
+        red_win_key = red_win_keys[index][0]
+        blue_loss_key = blue_loss_keys[index][0]
+        red_loss_key = red_loss_keys[index][0]
+        output_highlights(f"{base}/outputs/{vid_name}", blue_win_shots_and_nums[blue_win_key], True, i + 1)
+        output_highlights(f"{base}/outputs/{vid_name}", red_win_shots_and_nums[red_win_key], False, i + 1)
         bwk_list.append(code_to_name(blue_win_key))
         blk_list.append(code_to_name(blue_loss_key))
         rwk_list.append(code_to_name(red_win_key))
@@ -119,7 +120,7 @@ def code_to_name(code):
     return shots
 
 
-def output_highlights(base, num_list, blue):
+def output_highlights(base, num_list, blue, i):
     img_list = []
     player = 'blue' if blue else 'red'
     print(f'Generating {player} Highlights')
@@ -139,7 +140,8 @@ def output_highlights(base, num_list, blue):
             else:
                 break
 
-    out = cv2.VideoWriter(f"{base}/{player}_highlights.mp4",cv2.VideoWriter_fourcc(*'mp4v'), FPS, (frame_width, frame_height))
+    out = cv2.VideoWriter(f"{base}/{player}_highlights_{i}.mp4", cv2.VideoWriter_fourcc(*'mp4v'), FPS,
+                          (frame_width, frame_height))
     for frame in img_list:
         out.write(frame)
     out.release()
@@ -235,8 +237,11 @@ def get_court_info(frame_height, court_kp_model, court_kp_model_old, img):
     keypoints_old = []
     for kps in output_old[0]['keypoints'][high_scores_idxs_old][post_nms_idxs_old].detach().cpu().numpy():
         keypoints_old.append([list(map(int, kp[:2])) for kp in kps])
+    try:
+        true_court_points = copy.deepcopy(keypoints[0])
+    except:
+        return False, False, False, False
 
-    true_court_points = copy.deepcopy(keypoints[0])
     multi_points = extension(correction(np.array(keypoints[0]))).tolist()
     print(multi_points)
     keypoints_old[0][0][0] -= 80
@@ -263,7 +268,8 @@ def get_court_info(frame_height, court_kp_model, court_kp_model_old, img):
 
 # update the score using the serving player of next score
 def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, flip, win_loss_dicts):
-    with open(f"{base}/outputs/{vid_name}/scores/game_{game}_score_{score}/info.json", 'r', encoding="utf-8") as score_json:
+    with open(f"{base}/outputs/{vid_name}/scores/game_{game}_score_{score}/info.json", 'r',
+              encoding="utf-8") as score_json:
         dict = json.load(score_json)
         shot_list = dict['shot list']
         bsv = dict['blue serve first']
@@ -594,7 +600,10 @@ class video_resolver:
                                         out = cv2.VideoWriter(f"{store_path}/video.mp4",
                                                               cv2.VideoWriter_fourcc(*'mp4v'), int(FPS / frame_rate),
                                                               (frame_width, frame_height))
-                                        success = add_result2(out, joint_img_list, shot_list, move_dir_list)
+                                        try:
+                                            success = add_result2(out, joint_img_list, shot_list, move_dir_list)
+                                        except:
+                                            print('No Shots...')
                                         out.release()
 
                                         if score != 0:
@@ -617,7 +626,8 @@ class video_resolver:
                                             top_bot_score = [0, 0]
 
                                         if 2 in shuttle_direction and 1 in shuttle_direction:
-                                            first_dir = True if shuttle_direction.index(1) < shuttle_direction.index(2) else False
+                                            first_dir = True if shuttle_direction.index(1) < shuttle_direction.index(
+                                                2) else False
                                         elif 2 in shuttle_direction:
                                             first_dir = False
                                         elif 1 in shuttle_direction:
@@ -751,7 +761,7 @@ class video_resolver:
                                             shutil.move(store_path, eli_path)
                                         except:
                                             eli_repeat += 1
-                                            os.rename(store_path,f'{store_path}-{eli_repeat}')
+                                            os.rename(store_path, f'{store_path}-{eli_repeat}')
                                             shutil.move(f'{store_path}-{eli_repeat}', eli_path)
                                 print('clear')
                                 one_count = 0
@@ -767,21 +777,24 @@ class video_resolver:
                                 score = 0
                                 flip = not flip
                                 top_bot_score = [0, 0]
-                            if game == 3 and zero_count != 0 and 480 < zero_count < 1094 and 9 < max(top_bot_score) < 21:
+                            if game == 3 and zero_count != 0 and 480 < zero_count < 1094 and 9 < max(
+                                    top_bot_score) < 21:
                                 flip = not flip
 
                             backup_z = zero_count
                             zero_count = 0
 
                             # get the court info when first meet the right shooting angle
-                            if self.court_points is None:
+                            if self.court_points is None or self.court_points is False:
                                 self.multi_points, self.true_court_points, self.court_points, self.court_info = get_court_info(
                                     frame_height, self.court_kp_model, self.court_kp_model_old,
                                     img=wait_list[2][2])
                                 print(self.true_court_points)
-                                print("Get!")
-                                self.court_kp_model = None
-                                self.court_kp_model_old = None
+                                if self.court_points == False:
+                                    continue
+                                else:
+                                    self.court_kp_model = None
+                                    self.court_kp_model_old = None
                             if start_recording:
                                 start_frame = frame_count
                                 start_recording = False
@@ -803,7 +816,8 @@ class video_resolver:
                         else:
                             zero_count += 1
                     saved_count += 1
-                    print(saved_count, ' / ', total_saved_count, ' ', self.vid_name, 'score: ', score, 'last score: ', last_score)
+                    print(saved_count, ' / ', total_saved_count, ' ', self.vid_name, 'score: ', score, 'last score: ',
+                          last_score, 'p: ', p)
                 frame_count += 1
             else:
                 break
@@ -820,10 +834,11 @@ class video_resolver:
         print(res_game_info, len(res_game_info))
         if score != 0:
             top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info), score - 1,
-                                                     None, top_bot_score, flip, win_loss_dicts)
+                                                         None, top_bot_score, flip, win_loss_dicts)
         else:
-            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info) - 1, last_score - 1,
-                                                     None, top_bot_score, flip, win_loss_dicts)
+            top_bot_score, win_loss_dicts = update_score(self.base, self.vid_name, len(res_game_info) - 1,
+                                                         last_score - 1,
+                                                         None, top_bot_score, flip, win_loss_dicts)
         print(top_bot_score)
 
         with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'w', encoding="utf-8") as f:
@@ -848,11 +863,13 @@ class video_resolver:
             blue_total_shots[k] += frame_dict['blue loss shots'][k]
             red_total_shots[k] += frame_dict['red loss shots'][k]
             if (frame_dict['blue win shots'][k] + frame_dict['blue loss shots'][k]) != 0:
-                frame_dict['blue win shots'][k] = np.round(frame_dict['blue win shots'][k] / (frame_dict['blue win shots'][k] + frame_dict['blue loss shots'][k]) * 100, 2)
+                frame_dict['blue win shots'][k] = np.round(frame_dict['blue win shots'][k] / (
+                            frame_dict['blue win shots'][k] + frame_dict['blue loss shots'][k]) * 100, 2)
             else:
                 frame_dict['blue win shots'][k] = np.round(frame_dict['blue win shots'][k], 2)
             if (frame_dict['red win shots'][k] + frame_dict['red loss shots'][k]) != 0:
-                frame_dict['red win shots'][k] = np.round(frame_dict['red win shots'][k] / (frame_dict['red win shots'][k] + frame_dict['red loss shots'][k]) * 100, 2)
+                frame_dict['red win shots'][k] = np.round(frame_dict['red win shots'][k] / (
+                            frame_dict['red win shots'][k] + frame_dict['red loss shots'][k]) * 100, 2)
             else:
                 frame_dict['red win shots'][k] = np.round(frame_dict['red win shots'][k], 2)
 
@@ -860,6 +877,15 @@ class video_resolver:
         for game in games[:-1]:
             game['top bot score'][np.argmax(game['top bot score'])] += 1
             game['score count'] += 1.0
+        for game in games:
+            for i in range(2):
+                game['top bot score'][i] = float(game['top bot score'][i])
+            game['score count'] = float(game['score count'])
+
+        for k in frame_dict['blue win shots'].keys():
+            frame_dict['blue win shots'][k] = float(frame_dict['blue win shots'][k])
+            frame_dict['red win shots'][k] = float(frame_dict['red win shots'][k])
+
         selected_dict = {
             'games': games,
             'blue total shots': count_percentage(blue_total_shots),
@@ -916,11 +942,9 @@ class video_resolver:
     def get_highlights_info(self):
         with open(f"{self.base}/outputs/{self.vid_name}/highlights.json", 'r', encoding="utf-8") as f:
             frame_dict = json.load(f)
-        bhl = frame_dict['blue highlights']
-        rhl = frame_dict['red highlights']
         bwk = frame_dict['blue win key']
         blk = frame_dict['blue loss key']
         rwk = frame_dict['red win key']
         rlk = frame_dict['red loss key']
 
-        return bhl, rhl, [bwk, blk, rwk, rlk]
+        return [bwk, blk, rwk, rlk]
