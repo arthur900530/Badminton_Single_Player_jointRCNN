@@ -700,7 +700,7 @@ class video_resolver:
                                             print('No Shots...')
                                             continue
                                         out.release()
-                                        if prev_shot_list == False and prev_move_dir_list == False:
+                                        if prev_shot_list != False and prev_move_dir_list != False:
                                             if score != 0:
                                                 top_bot_score, win_loss_dicts, win_loss_movement_dict = update_score(
                                                     self.base, self.vid_name, game,
