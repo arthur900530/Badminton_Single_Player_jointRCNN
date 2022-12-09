@@ -120,6 +120,7 @@ def check_hit_frame(direction_list, joint_list, court_points, multi_points):
     got_first = False
     last_d = 0
     direction_list = correct_seq(direction_list)
+    print(direction_list)
     for i in range(len(direction_list)):
         d = direction_list[i]
         if not got_first:
