@@ -267,7 +267,7 @@ def get_court_info(frame_height, court_kp_model, court_kp_model_old, img):
 
 
 # update the score using the serving player of next score
-def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, flip, win_loss_dicts, move_dir_list,
+def update_score(base, vid_name, game, score, shuttle_direction, blue_red_score, flip, win_loss_dicts, move_dir_list,
                  win_loss_movement_dict):
     with open(f"{base}/outputs/{vid_name}/scores/game_{game}_score_{score}/info.json", 'r',
               encoding="utf-8") as score_json:
@@ -283,23 +283,23 @@ def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, 
             winner = False
         winner = winner if not flip else not winner
     else:
-        winner = True if top_bot_score[0] > top_bot_score[1] else False
+        winner = True if blue_red_score[0] > blue_red_score[1] else False
 
-    dict['winner'] = winner
+    dict['winner'] = winner # True implies blue win
     if winner:
-        dict['top bot score'][0] += 1
-        top_bot_score[0] += 1
+        dict['blue red score'][0] += 1
+        blue_red_score[0] += 1
         for i in range(len(move_dir_list)):
             if bsv:
                 if i % 2 == 0:
-                    win_loss_movement_dict[0][move_dir_list[i][0]] += 1
-                else:
                     win_loss_movement_dict[3][move_dir_list[i][0]] += 1
+                else:
+                    win_loss_movement_dict[0][move_dir_list[i][0]] += 1
             else:
                 if i % 2 == 0:
-                    win_loss_movement_dict[3][move_dir_list[i][0]] += 1
-                else:
                     win_loss_movement_dict[0][move_dir_list[i][0]] += 1
+                else:
+                    win_loss_movement_dict[3][move_dir_list[i][0]] += 1
         for i in range(len(shot_list)):
             if bsv:
                 if i % 2 == 0:
@@ -312,19 +312,19 @@ def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, 
                 else:
                     win_loss_dicts[0][shot_list[i][0].split(' ')[-1]] += 1
     else:
-        dict['top bot score'][1] += 1
-        top_bot_score[1] += 1
+        dict['blue red score'][1] += 1
+        blue_red_score[1] += 1
         for i in range(len(move_dir_list)):
             if bsv:
                 if i % 2 == 0:
-                    win_loss_movement_dict[1][move_dir_list[i][0]] += 1
-                else:
                     win_loss_movement_dict[2][move_dir_list[i][0]] += 1
+                else:
+                    win_loss_movement_dict[1][move_dir_list[i][0]] += 1
             else:
                 if i % 2 == 0:
-                    win_loss_movement_dict[2][move_dir_list[i][0]] += 1
-                else:
                     win_loss_movement_dict[1][move_dir_list[i][0]] += 1
+                else:
+                    win_loss_movement_dict[2][move_dir_list[i][0]] += 1
         for i in range(len(shot_list)):
             if bsv:
                 if i % 2 == 0:
@@ -340,7 +340,7 @@ def update_score(base, vid_name, game, score, shuttle_direction, top_bot_score, 
     with open(f"{base}/outputs/{vid_name}/scores/game_{game}_score_{score}/info.json", 'w', encoding="utf-8") as f:
         json.dump(dict, f, indent=2, ensure_ascii=False)
 
-    return top_bot_score, win_loss_dicts, win_loss_movement_dict
+    return blue_red_score, win_loss_dicts, win_loss_movement_dict
 
 
 class video_resolver:
@@ -630,7 +630,7 @@ class video_resolver:
         game, score = 1, 0
         zero_count, one_count = 0, 0
         last_score = 0
-        top_bot_score, res_game_info = [0, 0], []
+        blue_red_score, res_game_info = [0, 0], []
         start_recording, flip = True, False
         start_frame, end_frame = 0, 0
         prev_shot_list, prev_move_dir_list = False, False
@@ -702,25 +702,25 @@ class video_resolver:
                                         out.release()
                                         if prev_shot_list != False and prev_move_dir_list != False:
                                             if score != 0:
-                                                top_bot_score, win_loss_dicts, win_loss_movement_dict = update_score(
+                                                blue_red_score, win_loss_dicts, win_loss_movement_dict = update_score(
                                                     self.base, self.vid_name, game,
                                                     score - 1,
                                                     shuttle_direction,
-                                                    top_bot_score, flip,
+                                                    blue_red_score, flip,
                                                     win_loss_dicts, prev_move_dir_list, win_loss_movement_dict)
                                             if score == 0 and game != 1:
-                                                top_bot_score, win_loss_dicts, win_loss_movement_dict = update_score(
+                                                blue_red_score, win_loss_dicts, win_loss_movement_dict = update_score(
                                                     self.base, self.vid_name,
                                                     game - 1,
                                                     last_score - 1,
                                                     shuttle_direction,
-                                                    top_bot_score, flip,
+                                                    blue_red_score, flip,
                                                     win_loss_dicts, prev_move_dir_list, win_loss_movement_dict)
-                                                if top_bot_score[0] == 1:
-                                                    res_game_info[-1]['top bot score'][0] += 1
+                                                if blue_red_score[0] == 1:
+                                                    res_game_info[-1]['blue red score'][0] += 1
                                                 else:
-                                                    res_game_info[-1]['top bot score'][1] += 1
-                                                top_bot_score = [0, 0]
+                                                    res_game_info[-1]['blue red score'][1] += 1
+                                                blue_red_score = [0, 0]
                                         prev_move_dir_list = move_dir_list
                                         prev_shot_list = shot_list
 
@@ -832,7 +832,7 @@ class video_resolver:
                                             'score': score,
                                             'time': [start_time, end_time],
                                             'winner': None,
-                                            'top bot score': top_bot_score,
+                                            'blue red score': blue_red_score,
                                             'shuttle direction': shuttle_direction,
                                             'shot list': shot_list,
                                             'blue shot dict': b_shot_dict,
@@ -869,15 +869,15 @@ class video_resolver:
                             last_type = p
                         if p == 1:
                             # check if next game starts
-                            if zero_count != 0 and 996 < zero_count < 1956 and 15 < max(top_bot_score) and game < 3:
-                                res_game_info.append({f'score count': score, 'top bot score': top_bot_score})
+                            if zero_count != 0 and 996 < zero_count < 1956 and 15 < max(blue_red_score) and game < 3:
+                                res_game_info.append({f'score count': score, 'blue red score': blue_red_score})
                                 last_score = score
                                 game += 1
                                 score = 0
                                 flip = not flip
-                                top_bot_score = [0, 0]
+                                blue_red_score = [0, 0]
                             if game == 3 and zero_count != 0 and 480 < zero_count < 1094 and 9 < max(
-                                    top_bot_score) < 21:
+                                    blue_red_score) < 21:
                                 flip = not flip
 
                             backup_z = zero_count
@@ -929,21 +929,21 @@ class video_resolver:
         print(f'Score: {score}')
 
         # last score
-        res_game_info.append({f'score count': score, 'top bot score': top_bot_score})
+        res_game_info.append({f'score count': score, 'blue red score': blue_red_score})
         print(res_game_info, len(res_game_info))
         if score != 0:
-            top_bot_score, win_loss_dicts, win_loss_movement_dict = update_score(self.base, self.vid_name,
+            blue_red_score, win_loss_dicts, win_loss_movement_dict = update_score(self.base, self.vid_name,
                                                                                  len(res_game_info), score - 1,
-                                                                                 None, top_bot_score, flip,
+                                                                                 None, blue_red_score, flip,
                                                                                  win_loss_dicts, prev_move_dir_list,
                                                                                  win_loss_movement_dict)
         else:
-            top_bot_score, win_loss_dicts, win_loss_movement_dict = update_score(self.base, self.vid_name,
+            blue_red_score, win_loss_dicts, win_loss_movement_dict = update_score(self.base, self.vid_name,
                                                                                  len(res_game_info) - 1, last_score - 1,
-                                                                                 None, top_bot_score, flip,
+                                                                                 None, blue_red_score, flip,
                                                                                  win_loss_dicts, prev_move_dir_list,
                                                                                  win_loss_movement_dict)
-        print(top_bot_score)
+        print(blue_red_score)
 
         # whole game
         with open(f"{self.base}/outputs/{self.vid_name}/game_info.json", 'w', encoding="utf-8") as f:
@@ -958,8 +958,8 @@ class video_resolver:
                        'red loss moves': win_loss_movement_dict[3],
                        'blue total shots': b_total_shot_dict,
                        'red total shots': r_total_shot_dict,
-                       'blue total move': b_total_move_dict,
-                       'red total move': r_total_move_dict}, f, indent=2, ensure_ascii=False)
+                       'blue total moves': b_total_move_dict,
+                       'red total moves': r_total_move_dict}, f, indent=2, ensure_ascii=False)
 
         generate_player_strategy(self.base, self.vid_name)
 
@@ -986,11 +986,11 @@ class video_resolver:
 
         games = frame_dict['games']
         for game in games[:-1]:
-            game['top bot score'][np.argmax(game['top bot score'])] += 1
+            game['blue red score'][np.argmax(game['blue red score'])] += 1
             game['score count'] += 1.0
         for game in games:
             for i in range(2):
-                game['top bot score'][i] = float(game['top bot score'][i])
+                game['blue red score'][i] = float(game['blue red score'][i])
             game['score count'] = float(game['score count'])
 
         for k in frame_dict['blue win shots'].keys():
@@ -1010,8 +1010,8 @@ class video_resolver:
             'blue loss moves': count_percentage(frame_dict['blue loss moves']),
             'red win moves': count_percentage(frame_dict['red win moves']),
             'red loss moves': count_percentage(frame_dict['red loss moves']),
-            'blue total move': count_percentage(frame_dict['blue total move']),
-            'red total move': count_percentage(frame_dict['red total move']),
+            'blue total moves': count_percentage(frame_dict['blue total moves']),
+            'red total moves': count_percentage(frame_dict['red total moves']),
         }
         return selected_dict
 
@@ -1037,7 +1037,7 @@ class video_resolver:
                 frame_dict = json.load(f)
             selected_dict = {
                 'game': float(frame_dict['game']),
-                'top bot score': frame_dict['top bot score'],
+                'blue red score': frame_dict['blue red score'],
                 'winner': frame_dict['winner'],
                 'blue serve first': frame_dict['blue serve first'],
                 'shot list': frame_dict['shot list'],
