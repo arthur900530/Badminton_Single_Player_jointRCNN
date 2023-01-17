@@ -25,13 +25,11 @@ def main():
         total_info = vpr.get_total_info()
 
         scores_dict = vpr.get_respective_score_info()
-        # print(scores_dict['g1'][0])
-        # print(total_info)
         return_info_dict = {
             'players': {'blue': '...', 'red': '...'},
             'highlights info': [blue_highlight, red_highlight, keys],
             'total info': total_info,
-            # 'respective scores': scores_dict,
+            'respective scores': scores_dict,
         }
         joint_save_path = f'../test_videos/outputs/{vid_name}/return_info.json'
         try:
